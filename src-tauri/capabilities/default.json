@@ -11,6 +11,17 @@
     "dialog:default",
     "fs:default",
     "fs:allow-app-read-recursive",
-    "fs:allow-app-meta-recursive"
+    "fs:allow-app-meta-recursive",
+    "shell:default",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "args": true,
+          "name": "binaries/node-transcoder",
+          "sidecar": true
+        }
+      ]
+    }
   ]
 }

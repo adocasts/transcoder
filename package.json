@@ -1,5 +1,5 @@
 {
-  "name": "transcoder",
+  "name": "adocasts-transcoder",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,6 +14,8 @@
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "@tauri-apps/plugin-fs": "^2.2.0",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-shell": "^2.2.0",
+    "@vueuse/core": "^12.2.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

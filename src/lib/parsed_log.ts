@@ -6,15 +6,30 @@ export enum LogTypes {
   DEBUG = 'debug',
 }
 
+export enum LogProgressStatus {
+  QUEUED = 'Queued',
+  WORKING = 'Working',
+  DONE = 'Done',
+  ERROR = 'Error',
+}
+
 export default class ParsedLog {
   declare type: LogTypes
   declare message: string
-  declare progress?: { percent: number; file: string }
+  declare progress?: { percent: number; file: string; status: LogProgressStatus }
 
-  constructor(log: string) {
+  constructor(log?: string) {
+    if (!log) return
     this.type = this.#getType(log)
     this.message = this.#getMessage(log)
     this.progress = this.#getProgress()
+  }
+
+  static stderr(log: string) {
+    const parsed = new ParsedLog()
+    parsed.type = LogTypes.ERROR
+    parsed.message = log
+    return parsed
   }
 
   #getType(log: string) {
@@ -39,9 +54,24 @@ export default class ParsedLog {
     if (this.type !== LogTypes.PROGRESS) return
 
     const [file, percentage] = this.message.split(':')
+    
+    if (!percentage || percentage.trim() === 'ERROR') {
+      return {
+        percent: 0,
+        file: file.trim(),
+        status: LogProgressStatus.ERROR
+      }
+    }
+
+    const percent = Number(percentage.replace('%', '').trim())
+    let status = LogProgressStatus.QUEUED
+
+    if (percent > 0 && percent < 100) status = LogProgressStatus.WORKING
+    if (percent === 100) status = LogProgressStatus.DONE
 
     return {
-      percent: Number(percentage.replace('%', '').trim()),
+      percent,
+      status,
       file: file.trim()
     }
   }

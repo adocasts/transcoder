@@ -34,8 +34,13 @@ export default class Transcoder {
   }
 
   static parseResolutions(arg: string) {
+    const parsed: Resolutions[] = []
     const args = arg.split(',')
-    const parsed = args.map((a) => Resolutions[a as keyof typeof Resolutions])
+
+    for (const value of Object.values(Resolutions)) {
+      const resolution = args.find((a) => a == value)
+      if (resolution) parsed.push(value as Resolutions)
+    }
 
     return parsed
   }
@@ -60,24 +65,37 @@ export default class Transcoder {
   }
 
   async process() {
+    const done: string[] = []
+
     for (const item of this.#queue) {
       const resolutionPlaylists: TranscoderPlaylist[] = []
       const filenameLessExt = item[1].filename.split('.').shift() as string
       const outputFolder = `${this.#output}/${filenameLessExt}`
 
       for (const resolution of this.#resolutions) {
-        logger.debug(`processing ${item[1].filename} to ${outputFolder}`)
+        logger.info(`[processing]: ${resolution}p for ${item[1].filename}`)
 
         const playlist = await this.#transcode(item, resolution, outputFolder)
         
+        if (!playlist) {
+          logger.info(`[skipping]: ${resolution}p for ${item[1].filename}; no playlist returned`)
+          continue
+        }
+
         resolutionPlaylists.push(playlist)
+
+        logger.success(`[done]: ${resolution}p for ${item[1].filename}`)
       }
 
-      this.#buildMainPlaylist(resolutionPlaylists, outputFolder)
+      const success = await this.#buildMainPlaylist(resolutionPlaylists, outputFolder)
+
+      if (success) done.push(item[0])
     }
+
+    logger.success(`[finished]: ${done.length} file(s) successfully processed`)
   }
 
-  async #transcode([path, { filename }]: [string, TranscoderQueueFile], resolution: Resolutions, outputFolder: string): Promise<TranscoderPlaylist> {
+  async #transcode([path, { filename }]: [string, TranscoderQueueFile], resolution: Resolutions, outputFolder: string): Promise<TranscoderPlaylist | null> {
     const resolutionOutput = `${outputFolder}/${resolutions.get(resolution)?.height}p`
     const outputFilenameLessExt = `${resolutionOutput}/${filename}_${resolution}`
     const outputPlaylist = `${outputFilenameLessExt}p.m3u8`
@@ -85,14 +103,15 @@ export default class Transcoder {
     const { height, bitrate } = resolutions.get(resolution) ?? {}
 
     if (!height || !bitrate) {
-      throw new Error(`Invalid resolution provided: ${resolution}`)
+      logger.error(`[argument error]: Invalid resolution provided: ${resolution}`)
+      return null
     }
 
-    logger.debug(`transcoding ${path} to ${outputPlaylist}`)
+    logger.info(`[creating]: ${resolution}p destination ${resolutionOutput}`)
 
-    await mkdir(outputFolder, { recursive: true })
+    await mkdir(resolutionOutput, { recursive: true })
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       ffmpeg(decodeURI(path))
         .videoCodec('libx264')
         .videoBitrate(`${bitrate}k`)
@@ -110,10 +129,17 @@ export default class Transcoder {
           '-hls_segment_filename', outputSegment,
         ])
         .output(outputPlaylist)
-        .on('start', () => logger.debug('ffmpeg started'))
-        .on('progress', (progress) => logger.progress(`${path}: ${progress.percent}%`))
+        .on('progress', (progress) => {
+          logger.progress(`${path}: ${progress.percent}%`)
+          logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
+        })
+        .on('start', () => {
+          logger.info(`[transcoding started]: ${resolution}p for ${filename}`)
+          logger.progress(`${path}: 0%`)
+        })
         .on('end', async () => {
-          logger.debug('ffmpeg finished')
+          logger.info(`[transcoding completed]: ${resolution}p for ${filename}`)
+          logger.progress(`${path}: 100%`)
           
           resolve({
             resolution: await this.#detectPlaylistResolution(outputPlaylist),
@@ -123,27 +149,37 @@ export default class Transcoder {
           })
         })
         .on('error', (err) => {
-          logger.error(`ffmpeg error: ${err.message}`)
-          reject(err)
+          logger.progress(`${path}: ERROR`)
+          logger.error(`[ffmpeg error]: ${err.message}`)
+          resolve(null)
         })
         .run()
     })
   }
 
   async #buildMainPlaylist(playlists: TranscoderPlaylist[], outputFolder: string) {
+    if (!playlists.length) {
+      logger.info(`[skipping]: main playlist for ${outputFolder}; no resolution playlists found`)
+      return
+    }
+
     const main = ['#EXTM3U', '#EXT-X-VERSION:3']
 
     for (const playlist of playlists) {
-      logger.debug(`generating ${playlist.resolution.height}p playlist. Path: ${playlist.playlistPath}`)
+      logger.debug(`[playlist]: ${playlist.resolution.height}p for ${playlist.playlistFilename}`)
       main.push(`#EXT-X-STREAM-INF:BANDWIDTH=${playlist.bitrate * 1000},RESOLUTION=${playlist.resolution.width}x${playlist.resolution.height}`);
       main.push(playlist.playlistFilename);
     }
 
     const final = main.join('\n')
 
-    logger.debug(`writing ${outputFolder}/master.m3u8`)
+    logger.debug(`[creating]: main playlist ${outputFolder}/master.m3u8`)
 
     await writeFile(`${outputFolder}/master.m3u8`, final)
+
+    logger.success(`[done]: main playlist ${outputFolder}/master.m3u8`)
+
+    return true
   }
 
   async #detectPlaylistResolution(playlistPath: string): Promise<{ width: number, height: number }> {

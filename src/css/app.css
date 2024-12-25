@@ -75,6 +75,15 @@
   body {
     @apply bg-background text-foreground;
   }
+  html,
+  body,
+  #app {
+    @apply h-full;
+  }
+
+  #app {
+    @apply flex flex-col;
+  }
 }
 
 table {

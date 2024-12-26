@@ -16,6 +16,7 @@ export type TranscoderPlaylist = {
   resolution: { width: number; height: number }
   bitrate: number
   playlistFilename: string
+  playlistPathFromMain: string
   playlistPath: string
 }
 
@@ -96,10 +97,12 @@ export default class Transcoder {
   }
 
   async #transcode([path, { filename }]: [string, TranscoderQueueFile], resolution: Resolutions, outputFolder: string): Promise<TranscoderPlaylist | null> {
-    const resolutionOutput = `${outputFolder}/${resolutions.get(resolution)?.height}p`
-    const outputFilenameLessExt = `${resolutionOutput}/${filename}_${resolution}`
-    const outputPlaylist = `${outputFilenameLessExt}p.m3u8`
-    const outputSegment = `${outputFilenameLessExt}_%03d.ts`
+    const resolutionOutput = `${outputFolder}/${resolution}p`
+    const filenameLessExt = filename.split('.').shift() as string
+    const outputFilenameLessExt = `${filenameLessExt}_${resolution}`
+    const outputPlaylist = `${resolutionOutput}/${outputFilenameLessExt}p.m3u8`
+    const outputSegment = `${resolutionOutput}/${outputFilenameLessExt}_%03d.ts`
+    const outputPlaylisFromMain = `${resolution}p/${outputFilenameLessExt}p.m3u8`
     const { height, bitrate } = resolutions.get(resolution) ?? {}
 
     if (!height || !bitrate) {
@@ -144,6 +147,7 @@ export default class Transcoder {
           resolve({
             resolution: await this.#detectPlaylistResolution(outputPlaylist),
             playlistFilename: outputPlaylist.split('/').pop() as string,
+            playlistPathFromMain: outputPlaylisFromMain,
             playlistPath: outputPlaylist,
             bitrate,
           })
@@ -166,9 +170,9 @@ export default class Transcoder {
     const main = ['#EXTM3U', '#EXT-X-VERSION:3']
 
     for (const playlist of playlists) {
-      logger.debug(`[playlist]: ${playlist.resolution.height}p for ${playlist.playlistFilename}`)
+      logger.debug(`[playlist]: ${playlist.resolution.height}p for ${playlist.playlistPathFromMain}`)
       main.push(`#EXT-X-STREAM-INF:BANDWIDTH=${playlist.bitrate * 1000},RESOLUTION=${playlist.resolution.width}x${playlist.resolution.height}`);
-      main.push(playlist.playlistFilename);
+      main.push(playlist.playlistPathFromMain);
     }
 
     const final = main.join('\n')

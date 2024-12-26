@@ -1,16 +1,51 @@
-# Tauri + Vue + TypeScript
+![Adocasts](https://github.com/adocasts/.github/blob/main/assets/brand-banner-rounded.png?raw=true)
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Adocasts provides education lessons, screencasts, and livestreams on AdonisJS, NodeJS, JavaScript, and more. We have a vast library of free lessons and resources that expands weekly to help get you up and running with AdonisJS.
 
-## Recommended IDE Setup
+Get even more by joining [Adocasts Plus](https://adocasts.com/pricing)
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+📚 Ready to learn? [Check out adocasts.com](https://adocasts.com)  
+🎉 New lessons every week!
 
-## Type Support For `.vue` Imports in TS
+---
 
-Since TypeScript cannot handle type information for `.vue` imports, they are shimmed to be a generic Vue component type by default. In most cases this is fine if you don't really care about component prop types outside of templates. However, if you wish to get actual prop types in `.vue` imports (for example to get props validation when using manual `h(...)` calls), you can enable Volar's Take Over mode by following these steps:
+[![YouTube Badge](https://img.shields.io/youtube/channel/subscribers/UCTEKX3KQAJi7_0-_rSz0Edg?logo=YouTube&style=for-the-badge)](https://youtube.com/adocasts)
+[![Twitter Badge](https://img.shields.io/twitter/follow/adocasts?logo=twitter&logoColor=white&style=for-the-badge)](https://twitter.com/adocasts)
+[![Twitch Badge](https://img.shields.io/twitch/status/adocasts?logo=twitch&logoColor=white&style=for-the-badge)](https://twitch.tv/adocasts)
 
-1. Run `Extensions: Show Built-in Extensions` from VS Code's command palette, look for `TypeScript and JavaScript Language Features`, then right click and select `Disable (Workspace)`. By default, Take Over mode will enable itself if the default TypeScript extension is disabled.
-2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
+---
 
-You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+MacOS desktop application that transcodes a queue of video files into an HLS streamable playlist consisting of video segments for the desired resolutions.
+
+For the output destination selected, each video's transcoded playlist will be placed inside a folder named after the file. For each playlist, the resolution segments will be placed in a subfolder named for the resolution.
+
+For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions 2160p and 1080p are selected, the output will look as such:
+
+```
+.
+└── [selected destination]/
+    └── adonisjs-quick-tip/
+        ├── 1080p/
+        │   ├── adonisjs-quick-tip_1080_001.ts
+        │   ├── adonisjs-quick-tip_1080_002.ts
+        │   ├── adonisjs-quick-tip_1080_003.ts
+        │   └── adonisjs-quick-tip_1080.m3u8
+        ├── 2160p/
+        │   ├── adonisjs-quick-tip_2160_001.ts
+        │   ├── adonisjs-quick-tip_2160_002.ts
+        │   ├── adonisjs-quick-tip_2160_003.ts
+        │   └── adonisjs-quick-tip_2160.m3u8
+        └── master.m3u8
+```
+
+### Todos
+
+- [ ] Include compressed video file (for downloading)
+- [ ] Generate 5s animated webp image
+
+### Thank Yous
+
+The transcoding process (`sidecar-node-transcoder/src/transcoder`) is based on work done by:
+
+- [Steve Tenuto](https://gist.github.com/stenuto/9ff19ce89f07c7419a8d0976736ebe12)
+- [Wes Bos](https://github.com/wesbos/R2-video-streaming/tree/main)

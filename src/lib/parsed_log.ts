@@ -13,7 +13,13 @@ export enum LogProgressStatus {
   ERROR = 'Error',
 }
 
-export default class ParsedLog {
+export interface ParsedLogContract {
+  type: LogTypes
+  message: string
+  progress?: { percent: number; file: string; status: LogProgressStatus }
+}
+
+export default class ParsedLog implements ParsedLogContract {
   declare type: LogTypes
   declare message: string
   declare progress?: { percent: number; file: string; status: LogProgressStatus }

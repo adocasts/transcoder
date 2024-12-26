@@ -3,8 +3,6 @@ import Transcoder from "./transcoder.js";
 
 const command = process.argv[2];
 
-console.log({ argv: process.argv })
-
 async function main() {
   switch (command) {
     case 'transcode':

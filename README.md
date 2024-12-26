@@ -37,6 +37,8 @@ For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions
         │   ├── adonisjs-quick-tip_2160_002.ts
         │   ├── adonisjs-quick-tip_2160_003.ts
         │   └── adonisjs-quick-tip_2160.m3u8
+        ├── adonisjs-quick-tip.mp4 [compressed original]
+        ├── adonisjs-quick-tip.webp [6s animated webp]
         └── master.m3u8
 ```
 

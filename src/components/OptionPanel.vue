@@ -1,19 +1,24 @@
 <script setup lang="ts">
 import { open } from "@tauri-apps/plugin-dialog";
 import { readDir, stat } from "@tauri-apps/plugin-fs";
-import { computed } from "vue";
-import { LogProgressStatus } from "~/lib/parsed_log";
 import { allowedExtensions, Resolutions } from "~/lib/transcoder";
 import { enumKeys } from "~/lib/utils";
 import { Form, Statuses } from "~/types/form";
 import Checkbox from "./ui/checkbox/Checkbox.vue";
 import Label from "./ui/label/Label.vue";
 import Button from "./ui/button/Button.vue";
-import { FilePlus, Folder, FolderPlus, Loader2, Play } from "lucide-vue-next";
+import {
+  FilePlus,
+  Folder,
+  FolderPlus,
+  Loader2,
+  Play,
+  X,
+} from "lucide-vue-next";
 
 defineProps<{ status: Statuses; pending: string[] }>();
 
-const emit = defineEmits(["transcode"]);
+const emit = defineEmits(["transcode", "cancel"]);
 
 const form = defineModel<Form>({ required: true });
 
@@ -23,6 +28,8 @@ async function pickOutputFolder() {
     directory: true,
     multiple: false,
   });
+
+  console.log({ folder });
 
   if (!folder) return;
 
@@ -93,6 +100,7 @@ function toggleResolution(resolution: Resolutions) {
         <Label class="flex-1">
           <span class="inline-block mb-1">Output directory</span>
           <Button
+            type="button"
             variant="outline"
             class="flex w-full gap-4 justify-between !text-xs"
             @click="pickOutputFolder"
@@ -142,6 +150,17 @@ function toggleResolution(resolution: Resolutions) {
       >
         <FolderPlus class="absolute left-3" />
         Add folder(s)
+      </Button>
+
+      <Button
+        v-if="status === Statuses.PROCESSING"
+        @click="$emit('cancel')"
+        variant="destructive"
+        size="sm"
+        class="relative px-6"
+      >
+        <X class="absolute left-3" />
+        Cancel
       </Button>
 
       <Button

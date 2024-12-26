@@ -22,6 +22,11 @@
           "sidecar": true
         }
       ]
-    }
+    },
+    "shell:allow-kill",
+    "notification:default",
+    "notification:allow-notify",
+    "notification:allow-show",
+    "store:default"
   ]
 }

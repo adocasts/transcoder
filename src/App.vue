@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { Resolutions } from "./lib/transcoder";
-import { Command } from "@tauri-apps/plugin-shell";
+import { Child, Command } from "@tauri-apps/plugin-shell";
 import { videoDir } from "@tauri-apps/api/path";
 import ParsedLog, {
   LogProgressStatus,
@@ -12,9 +12,18 @@ import { Form, Statuses } from "./types/form";
 import OptionPanel from "./components/OptionPanel.vue";
 import QueueTable from "./components/QueueTable.vue";
 import Console from "./components/Console.vue";
+import {
+  isPermissionGranted,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
+import { load, Store } from "@tauri-apps/plugin-store";
+
+let store: Store | null = null;
 
 const status = ref<Statuses>(Statuses.IDLE);
 const logs = ref<ParsedLogContract[]>([]);
+const childProcess = ref<Child | null>(null);
+const canNotify = ref(false);
 
 const form = ref<Form>({
   queue: new Map([]),
@@ -94,17 +103,57 @@ async function transcode() {
   command.on("error", (err) => {
     console.error(err);
     status.value = Statuses.ERROR;
+
+    if (canNotify.value) {
+      sendNotification({
+        title: "Transcoding error",
+        body: err,
+      });
+    }
   });
 
   command.on("close", (_arg) => {
     status.value = Statuses.IDLE;
+
+    if (canNotify.value) {
+      sendNotification("Transcoding queue completed");
+    }
   });
 
-  await command.spawn();
+  childProcess.value = await command.spawn();
+}
+
+function cancel() {
+  if (childProcess.value) {
+    childProcess.value.kill();
+
+    const log = new ParsedLog();
+
+    log.type = LogTypes.INFO;
+    log.message = "Transcoding cancelled";
+    logs.value.push(log);
+  }
 }
 
 onMounted(async () => {
-  form.value.output = await videoDir();
+  const canSendNotifications = await isPermissionGranted();
+  canNotify.value = canSendNotifications;
+
+  store = await load("store.json", { autoSave: true });
+
+  const resolutions = await store.get<Resolutions[]>("resolutions");
+  const output = await store.get<string>("output");
+
+  form.value.resolutions = resolutions || form.value.resolutions;
+  form.value.output = output || (await videoDir());
+});
+
+onUnmounted(async () => {
+  if (store) {
+    await store.set("resolutions", form.value.resolutions);
+    await store.set("output", form.value.output);
+    await store.save();
+  }
 });
 </script>
 
@@ -120,6 +169,7 @@ onMounted(async () => {
       :status="status"
       :pending="pendingQueue"
       @transcode="transcode"
+      @cancel="cancel"
     />
   </section>
 </template>

@@ -2,6 +2,7 @@
 import { nextTick, ref, watch } from "vue";
 import { ParsedLogContract } from "~/lib/parsed_log";
 import Button from "./ui/button/Button.vue";
+import { X } from "lucide-vue-next";
 
 const logs = defineModel<ParsedLogContract[]>({ required: true });
 const logsRef = ref<HTMLDivElement | null>(null);

@@ -4,6 +4,7 @@ export enum LogTypes {
   SUCCESS = 'success',
   PROGRESS = 'progress',
   DEBUG = 'debug',
+  STEP = 'step',
 }
 
 export enum LogProgressStatus {
@@ -17,17 +18,20 @@ export interface ParsedLogContract {
   type: LogTypes
   message: string
   progress?: { percent: number; file: string; status: LogProgressStatus }
+  step?: { index: number; process: string; file: string; percent: number; status: LogProgressStatus }
 }
 
 export default class ParsedLog implements ParsedLogContract {
   declare type: LogTypes
   declare message: string
   declare progress?: { percent: number; file: string; status: LogProgressStatus }
+  declare step?: { index: number; process: string; file: string; percent: number; status: LogProgressStatus }
 
   constructor(log?: string) {
     if (!log) return
     this.type = this.#getType(log)
     this.message = this.#getMessage(log)
+    this.step = this.#getStep(log)
     this.progress = this.#getProgress()
   }
 
@@ -45,13 +49,32 @@ export default class ParsedLog implements ParsedLogContract {
     if (lowered.startsWith('info:')) return LogTypes.INFO
     if (lowered.startsWith('success:')) return LogTypes.SUCCESS
     if (lowered.startsWith('progress:')) return LogTypes.PROGRESS
+    if (lowered.startsWith('step@')) return LogTypes.STEP
 
     return LogTypes.DEBUG
+  }
+
+  #getStep(log: string) {
+    if (this.type !== LogTypes.STEP) return
+
+    const [prefix, ...json] = log.split(':')
+    const [_, step] = prefix.split('@')
+    console.log({ step, json })
+    const { process, file } = JSON.parse(json.join(':')) as { process: string; file: string }
+
+    return { 
+      index: Number(step),
+      process,
+      file,
+      status: LogProgressStatus.QUEUED,
+      percent: 0
+    }
   }
 
   #getMessage(log: string) {
     return log
       .replace(`${this.type.toUpperCase()}:`, '')
+      .replace(`${this.type.toUpperCase()}@${this.step}`, '')
       .replace('Error: ', '')
       .trim()
   }

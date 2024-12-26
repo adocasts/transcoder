@@ -7,7 +7,7 @@ import TableBody from "./ui/table/TableBody.vue";
 import TableCell from "./ui/table/TableCell.vue";
 import { Form } from "~/types/form";
 import { LogProgressStatus } from "~/lib/parsed_log";
-import { X } from "lucide-vue-next";
+import { Loader2, X } from "lucide-vue-next";
 import Button from "./ui/button/Button.vue";
 
 const form = defineModel<Form>({ required: true });
@@ -36,22 +36,37 @@ function bytesToSize(bytes: number) {
       <TableBody v-if="form.queue.size">
         <TableRow
           v-for="(
-            [path, { filename, extname, bytes, progress }], index
+            [path, { filename, extname, bytes, progress, processes }], index
           ) in form.queue"
           :key="path"
         >
-          <TableCell>{{ index + 1 }}</TableCell>
-          <TableCell>{{ filename }}</TableCell>
-          <TableCell>{{ extname }}</TableCell>
-          <TableCell>{{ bytesToSize(bytes) }}</TableCell>
+          <TableCell class="align-top">{{ index + 1 }}</TableCell>
+          <TableCell>
+            <div>
+              {{ filename }}
+            </div>
+            <div
+              v-if="
+                progress?.status !== LogProgressStatus.DONE && processes?.length
+              "
+              v-for="process in processes"
+              :key="process.index"
+              class="text-right text-xs text-slate-700"
+            >
+              {{ process.process }}
+            </div>
+          </TableCell>
+          <TableCell class="align-top">{{ extname }}</TableCell>
+          <TableCell class="align-top">{{ bytesToSize(bytes) }}</TableCell>
           <TableCell>
             <span
               v-if="progress?.status === LogProgressStatus.WORKING"
+              class="flex items-center"
               :class="
                 progress.percent < 100 ? 'text-blue-500' : 'text-green-500'
               "
             >
-              {{ progress.percent.toFixed(2) }}%
+              <Loader2 class="animate-spin w-3 h-3 mr-2" /> Processing
             </span>
             <span
               v-else
@@ -61,8 +76,33 @@ function bytesToSize(bytes: number) {
               }"
               >{{ progress?.status ?? LogProgressStatus.QUEUED }}</span
             >
+            <div
+              v-if="
+                progress?.status !== LogProgressStatus.DONE && processes?.length
+              "
+              v-for="process in processes"
+              :key="process.index"
+              class="text-xs text-slate-700"
+            >
+              <span
+                v-if="process?.status === LogProgressStatus.WORKING"
+                :class="
+                  process.percent < 100 ? 'text-blue-500' : 'text-green-500'
+                "
+              >
+                {{ process.percent.toFixed(2) }}%
+              </span>
+              <span
+                v-else
+                :class="{
+                  'text-red-500': process?.status === LogProgressStatus.ERROR,
+                  'text-green-500': process?.status === LogProgressStatus.DONE,
+                }"
+                >{{ process?.status ?? LogProgressStatus.QUEUED }}</span
+              >
+            </div>
           </TableCell>
-          <TableCell>
+          <TableCell class="align-top">
             <Button
               variant="ghost"
               size="icon"

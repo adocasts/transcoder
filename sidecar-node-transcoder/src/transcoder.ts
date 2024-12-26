@@ -72,9 +72,10 @@ export default class Transcoder {
       const resolutionPlaylists: TranscoderPlaylist[] = []
       const filenameLessExt = item[1].filename.split('.').shift() as string
       const outputFolder = `${this.#output}/${filenameLessExt}`
-
+      
       for (const resolution of this.#resolutions) {
         logger.info(`[processing]: ${resolution}p for ${item[1].filename}`)
+        logger.step(1, JSON.stringify({ process: `Transcoding ${resolution}p`, file: item[0] }))
 
         const playlist = await this.#transcode(item, resolution, outputFolder)
         
@@ -92,9 +93,17 @@ export default class Transcoder {
 
       if (success) done.push(item[0])
 
+      logger.step(2, JSON.stringify({ process: 'Compressing MP4', file: item[0] }))
+
       const compressedOutput = await this.#compressOriginal(item, outputFolder)
 
       if (compressedOutput) logger.success(`[done]: compressed ${item[1].filename}`)
+
+      logger.step(3, JSON.stringify({ process: 'Generating Animated WebP', file: item[0] }))
+
+      const animatedOutput = await this.#generateAnimatedWebp(item, outputFolder)
+
+      if (animatedOutput) logger.success(`[done]: generated animated webp for ${item[1].filename}`)
     }
 
     logger.success(`[finished]: ${done.length} file(s) successfully processed`)
@@ -210,6 +219,50 @@ export default class Transcoder {
     })
   }
 
+  async #generateAnimatedWebp([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
+    const filenameLessExt = filename.split('.').shift() as string
+    const output = `${outputFolder}/${filenameLessExt}.webp`
+    const duration = await this.#detectVideoDuration(path)
+
+    logger.info(`[generating]: animated preview for ${filename} to ${output}`)
+
+    return new Promise((resolve) => {
+      ffmpeg(decodeURI(path))
+        .videoCodec('libwebp')
+        .videoFilter(`fps=30, scale=320:-1`)
+        .setStartTime(duration > 30 ? 10 : 0)
+        .duration(6)
+        .outputOptions([
+          '-preset', 'picture',
+          '-loop', '0',
+          '-an',
+        ])
+        .output(output)
+        .on('progress', (progress) => {
+          // get percentage done from progress timemark in format HH:MM:SS.000 compared to duration
+          const percent = (Number(progress.timemark.split(':').pop()) / 6) * 100
+          logger.progress(`${path}: ${percent}%`)
+          logger.debug(`[progress]: ${percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
+        })
+        .on('start', () => {
+          logger.info(`[started]: animated webp for ${filename}`)
+          logger.progress(`${path}: 0%`)
+        })
+        .on('end', async () => {
+          logger.info(`[completed]: animated webp for ${filename}`)
+          logger.progress(`${path}: 100%`)
+          
+          resolve(output)
+        })
+        .on('error', (err) => {
+          logger.progress(`${path}: ERROR`)
+          logger.error(`[ffmpeg error]: ${err.message}`)
+          resolve(null)
+        })
+        .run()
+    })
+  }
+
   async #buildMainPlaylist(playlists: TranscoderPlaylist[], outputFolder: string) {
     if (!playlists.length) {
       logger.info(`[skipping]: main playlist for ${outputFolder}; no resolution playlists found`)
@@ -249,6 +302,24 @@ export default class Transcoder {
         }
 
         resolve({ width, height })
+      })
+    })
+  }
+
+  async #detectVideoDuration(path: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(path).ffprobe((err, data) => {
+        if (err) {
+          return reject(err)
+        }
+
+        const { duration } = data.streams.find((stream) => stream.codec_type === 'video') ?? {}
+        
+        if (!duration) {
+          return reject(new Error('Could not detect playlist resolution'))
+        }
+
+        resolve(Number(duration))
       })
     })
   }

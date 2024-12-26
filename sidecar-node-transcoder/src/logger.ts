@@ -18,6 +18,10 @@ class Logger {
   progress(message: string) {
     console.log('PROGRESS: '.concat(message))
   }
+
+  step(index: number, message: string) {
+    console.log(`STEP@${index}: `.concat(message))
+  }
 }
 
 const logger = new Logger()

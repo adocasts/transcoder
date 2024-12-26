@@ -43,7 +43,7 @@ For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions
 ### Todos
 
 - [x] Include compressed video file (for downloading)
-- [ ] Generate 5s animated webp image
+- [x] Generate 6s animated webp image
 - [ ] Upload generated files to Cloudflare R2
 
 ### Thank Yous

@@ -77,11 +77,27 @@ async function transcode() {
     console.log(data);
     const log = new ParsedLog(data);
 
+    if (log.type === LogTypes.STEP && log.step?.file) {
+      const item = form.value.queue.get(log.step.file);
+
+      if (item) {
+        item.processes = [...(item.processes ?? []), log.step];
+      }
+
+      return;
+    }
+
     if (log.type === LogTypes.PROGRESS && log.progress?.file) {
       const item = form.value.queue.get(log.progress.file);
 
       if (item) {
         item.progress = log.progress;
+      }
+
+      if (item && item.processes?.length) {
+        item.processes[item.processes.length - 1].percent =
+          log.progress.percent;
+        item.processes[item.processes.length - 1].status = log.progress.status;
       }
 
       return;
@@ -132,6 +148,15 @@ function cancel() {
     log.type = LogTypes.INFO;
     log.message = "Transcoding cancelled";
     logs.value.push(log);
+
+    for (const item of form.value.queue.values()) {
+      if (item.progress?.status === LogProgressStatus.DONE) {
+        continue;
+      }
+
+      item.processes = undefined;
+      item.progress = undefined;
+    }
   }
 }
 

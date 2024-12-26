@@ -15,7 +15,7 @@ Get even more by joining [Adocasts Plus](https://adocasts.com/pricing)
 
 ---
 
-![Adocasts Transcoder](https://github.com/adocasts/transcoder/tree/main/src/assets/screenshot.png)
+![Adocasts Transcoder](https://github.com/adocasts/transcoder/tree/main/src/assets/screenshot.png?raw=true)
 
 MacOS desktop application that transcodes a queue of video files into an HLS streamable playlist consisting of video segments for the desired resolutions.
 

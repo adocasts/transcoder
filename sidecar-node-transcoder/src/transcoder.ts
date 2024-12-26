@@ -91,6 +91,10 @@ export default class Transcoder {
       const success = await this.#buildMainPlaylist(resolutionPlaylists, outputFolder)
 
       if (success) done.push(item[0])
+
+      const compressedOutput = await this.#compressOriginal(item, outputFolder)
+
+      if (compressedOutput) logger.success(`[done]: compressed ${item[1].filename}`)
     }
 
     logger.success(`[finished]: ${done.length} file(s) successfully processed`)
@@ -151,6 +155,51 @@ export default class Transcoder {
             playlistPath: outputPlaylist,
             bitrate,
           })
+        })
+        .on('error', (err) => {
+          logger.progress(`${path}: ERROR`)
+          logger.error(`[ffmpeg error]: ${err.message}`)
+          resolve(null)
+        })
+        .run()
+    })
+  }
+
+  async #compressOriginal([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
+    const filenameLessExt = filename.split('.').shift() as string
+    const output = `${outputFolder}/${filenameLessExt}.mp4`
+    const { height, bitrate } = resolutions.get(Math.max(...this.#resolutions))!
+
+    logger.info(`[compressing]: ${filename} to ${output}`)
+
+    return new Promise((resolve) => {
+      ffmpeg(decodeURI(path))
+        .videoCodec('libx264')
+        .videoBitrate(`${bitrate}k`)
+        .audioCodec('aac')
+        .audioBitrate('128k')
+        .outputOptions([
+          '-filter:v', `scale=-2:${height}`,
+          '-preset', 'veryfast',
+          '-crf', '20',
+          '-g', '48',
+          '-keyint_min', '48',
+          '-sc_threshold', '0',
+        ])
+        .output(output)
+        .on('progress', (progress) => {
+          logger.progress(`${path}: ${progress.percent}%`)
+          logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
+        })
+        .on('start', () => {
+          logger.info(`[compression started]: ${height}p for ${filename}`)
+          logger.progress(`${path}: 0%`)
+        })
+        .on('end', async () => {
+          logger.info(`[compression completed]: ${height}p for ${filename}`)
+          logger.progress(`${path}: 100%`)
+          
+          resolve(output)
         })
         .on('error', (err) => {
           logger.progress(`${path}: ERROR`)

@@ -24,6 +24,7 @@
       ]
     },
     "shell:allow-kill",
+    "shell:allow-stdin-write",
     "notification:default",
     "notification:allow-notify",
     "notification:allow-show",

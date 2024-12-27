@@ -20,6 +20,17 @@ async function main() {
       }
       
       const transcoder = new Transcoder({ resolutions, output, queue, includeMp4, includeWebp })
+
+      // process.stdin.resume()
+      process.stdin.on('data', (data) => {
+        logger.debug(`[received]: ${data}`)
+        
+        if (data.toString() === 'cancel') {
+          transcoder.kill()
+          process.exit(0)
+        }
+      })
+
       await transcoder.process()
       break;
     default:

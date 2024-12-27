@@ -1,4 +1,4 @@
-import ffmpeg from "fluent-ffmpeg";
+import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
 import logger from "./logger.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { Resolutions, resolutions, allowedExtensions } from '../../src/lib/transcoder.js'
@@ -26,6 +26,7 @@ export type TranscoderPlaylist = {
 export default class Transcoder {
   static resolutions = resolutions
 
+  #command: FfmpegCommand | null = null
   #queue: TranscoderQueue = new Map()
   #resolutions: Resolutions[] = []
   #output: string
@@ -71,6 +72,17 @@ export default class Transcoder {
     return queue
   }
 
+  kill() {
+    if (!this.#command) {
+      logger.debug('[skipped]: no ffmpeg process to kill')
+      return
+    }
+
+    this.#command.kill("SIGTERM")
+
+    logger.debug('[killed]: ffmpeg process')
+  }
+
   async process() {
     const done: string[] = []
 
@@ -90,7 +102,7 @@ export default class Transcoder {
 
   async #transcodeResolutions([path, item]: [string, TranscoderQueueFile], outputFolder: string) {
     if (!this.#resolutions.length) return true
-    
+
     const resolutionPlaylists: TranscoderPlaylist[] = []
 
     for (const resolution of this.#resolutions) {
@@ -129,7 +141,8 @@ export default class Transcoder {
     await mkdir(resolutionOutput, { recursive: true })
     
     return new Promise((resolve) => {
-      ffmpeg(decodeURI(path))
+      this.#command = ffmpeg(decodeURI(path))
+        .output(outputPlaylist)
         .videoCodec('libx264')
         .videoBitrate(`${bitrate}k`)
         .audioCodec('aac')
@@ -145,32 +158,31 @@ export default class Transcoder {
           '-hls_playlist_type', 'vod',
           '-hls_segment_filename', outputSegment,
         ])
-        .output(outputPlaylist)
-        .on('progress', (progress) => {
-          logger.progress({ file: path, percent: progress.percent })
-          logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
+
+      this.#command.on('progress', (progress) => {
+        logger.progress({ file: path, percent: progress.percent })
+        logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
+      })
+
+      this.#command.on('start', () => {
+        logger.info(`[started]: transcoding ${resolution}p for ${filename}`)
+        logger.progress({ file: path, percent: 0 })
+      })
+
+      this.#command.on('end', async () => {
+        logger.success(`[completed]: transcoding ${resolution}p for ${filename}; output ${outputPlaylist}`)
+        logger.progress({ file: path, percent: 100 })
+        resolve({
+          resolution: await this.#detectPlaylistResolution(outputPlaylist),
+          playlistFilename: outputPlaylist.split('/').pop() as string,
+          playlistPathFromMain: outputPlaylisFromMain,
+          playlistPath: outputPlaylist,
+          bitrate,
         })
-        .on('start', () => {
-          logger.info(`[started]: transcoding ${resolution}p for ${filename}`)
-          logger.progress({ file: path, percent: 0 })
-        })
-        .on('end', async () => {
-          logger.info(`[completed]: transcoding ${resolution}p for ${filename}; output ${outputPlaylist}`)
-          logger.progress({ file: path, percent: 100 })
-          resolve({
-            resolution: await this.#detectPlaylistResolution(outputPlaylist),
-            playlistFilename: outputPlaylist.split('/').pop() as string,
-            playlistPathFromMain: outputPlaylisFromMain,
-            playlistPath: outputPlaylist,
-            bitrate,
-          })
-        })
-        .on('error', (err) => {
-          logger.progress({ file: path, percent: -1 })
-          logger.error(`[ffmpeg error]: ${err.message}`)
-          resolve(null)
-        })
-        .run()
+      })
+      
+      this.#command.on('error', (err) => this.#onFfmpegError(path, err, resolve))
+      this.#command.run()
     })
   }
 
@@ -185,7 +197,8 @@ export default class Transcoder {
     logger.step({ index: 2, process: `Compressing MP4`, file: path })
 
     return new Promise((resolve) => {
-      ffmpeg(decodeURI(path))
+      this.#command = ffmpeg(decodeURI(path))
+        .output(output)
         .videoCodec('libx264')
         .videoBitrate(`${bitrate}k`)
         .audioCodec('aac')
@@ -198,26 +211,25 @@ export default class Transcoder {
           '-keyint_min', '48',
           '-sc_threshold', '0',
         ])
-        .output(output)
-        .on('progress', (progress) => {
-          logger.progress({ file: path, percent: progress.percent })
-          logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
-        })
-        .on('start', () => {
-          logger.info(`[started]: compressing ${height}p for ${filename}`)
-          logger.progress({ file: path, percent: 0 })
-        })
-        .on('end', async () => {
-          logger.progress({ file: path, percent: 100 })
-          logger.success(`[completed]: compressing ${height}p for ${filename}; output ${output}`)
-          resolve(output)
-        })
-        .on('error', (err) => {
-          logger.progress({ file: path, percent: -1 })
-          logger.error(`[ffmpeg error]: ${err.message}`)
-          resolve(null)
-        })
-        .run()
+
+      this.#command.on('progress', (progress) => {
+        logger.progress({ file: path, percent: progress.percent })
+        logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
+      })
+      
+      this.#command.on('start', () => {
+        logger.info(`[started]: compressing ${height}p for ${filename}`)
+        logger.progress({ file: path, percent: 0 })
+      })
+      
+      this.#command.on('end', async () => {
+        logger.progress({ file: path, percent: 100 })
+        logger.success(`[completed]: compressing ${height}p for ${filename}; output ${output}`)
+        resolve(output)
+      })
+      
+      this.#command.on('error', (err) => this.#onFfmpegError(path, err, resolve))
+      this.#command.run()
     })
   }
 
@@ -231,7 +243,8 @@ export default class Transcoder {
     logger.step({ index: 3, process: `Generating Animated WebP`, file: path })
 
     return new Promise((resolve) => {
-      ffmpeg(decodeURI(path))
+      this.#command = ffmpeg(decodeURI(path))
+        .output(output)
         .videoCodec('libwebp')
         .videoFilter(`fps=30, scale=320:-1`)
         .setStartTime(duration > 30 ? 10 : 0)
@@ -241,29 +254,34 @@ export default class Transcoder {
           '-loop', '0',
           '-an',
         ])
-        .output(output)
-        .on('progress', (progress) => {
-          // get percentage done from progress timemark in format HH:MM:SS.000 compared to duration
-          const percent = (Number(progress.timemark.split(':').pop()) / 6) * 100
-          logger.progress({ file: path, percent })
-          logger.debug(`[progress]: ${percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
-        })
-        .on('start', () => {
-          logger.info(`[started]: generating animated webp for ${filename}`)
-          logger.progress({ file: path, percent: 0 })
-        })
-        .on('end', async () => {
-          logger.progress({ file: path, percent: 100 })
-          logger.success(`[completed]: generating animated webp for ${filename}; output ${output}`)
-          resolve(output)
-        })
-        .on('error', (err) => {
-          logger.progress({ file: path, percent: -1 })
-          logger.error(`[ffmpeg error]: ${err.message}`)
-          resolve(null)
-        })
-        .run()
+
+      this.#command.on('progress', (progress) => {
+        // get percentage done from progress timemark in format HH:MM:SS.000 compared to duration
+        const percent = (Number(progress.timemark.split(':').pop()) / 6) * 100
+        logger.progress({ file: path, percent })
+        logger.debug(`[progress]: ${percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
+      })
+
+      this.#command.on('start', () => {
+        logger.info(`[started]: generating animated webp for ${filename}`)
+        logger.progress({ file: path, percent: 0 })
+      })
+
+      this.#command.on('end', async () => {
+        logger.progress({ file: path, percent: 100 })
+        logger.success(`[completed]: generating animated webp for ${filename}; output ${output}`)
+        resolve(output)
+      })
+
+      this.#command.on('error', (err) => this.#onFfmpegError(path, err, resolve))
+      this.#command.run()
     })
+  }
+
+  #onFfmpegError(file: string, err: Error, resolve: (value: null) => void) {
+    logger.progress({ file, percent: -1 })
+    logger.error(`[ffmpeg error]: ${err.message}`)
+    resolve(null)
   }
 
   async #buildMainPlaylist(playlists: TranscoderPlaylist[], outputFolder: string) {
@@ -272,7 +290,7 @@ export default class Transcoder {
       return
     }
 
-    logger.debug(`[started]: generating main playlist ${outputFolder}/master.m3u8`);
+    logger.info(`[started]: generating main playlist ${outputFolder}/master.m3u8`);
 
     const main = ['#EXTM3U', '#EXT-X-VERSION:3']
 

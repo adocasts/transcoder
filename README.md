@@ -46,7 +46,7 @@ For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions
 
 - [x] Include compressed video file (for downloading)
 - [x] Generate 6s animated webp image
-- [ ] Killing NodeJS spawn (cancelling) doesn't cascade through to ffmpeg
+- [x] Killing NodeJS spawn (cancelling) doesn't cascade through to ffmpeg
 - [ ] Upload generated files to Cloudflare R2
 
 ### Thank Yous

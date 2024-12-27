@@ -156,9 +156,10 @@ function stdoutMessageHandler(log: ParsedLog) {
 
 // #endregion
 
-function cancel() {
+async function cancel() {
   if (childProcess.value) {
-    childProcess.value.kill();
+    await childProcess.value.write("cancel");
+    await childProcess.value.kill();
 
     const log = new ParsedLog();
 

@@ -2,7 +2,7 @@
 import { nextTick, ref, watch } from "vue";
 import { ParsedLogContract } from "~/lib/parsed_log";
 import Button from "./ui/button/Button.vue";
-import { X } from "lucide-vue-next";
+import { Terminal, X } from "lucide-vue-next";
 
 const logs = defineModel<ParsedLogContract[]>({ required: true });
 const logsRef = ref<HTMLDivElement | null>(null);
@@ -28,7 +28,10 @@ watch(
     <div
       class="sticky top-0 bg-slate-950 text-white font-bold uppercase tracking-wider pl-4 pr-2 py-2 flex justify-between items-center"
     >
-      <div class="text-sm">CONSOLE:</div>
+      <div class="text-sm flex items-center">
+        <Terminal class="w-4 h-4 mr-2" />
+        CONSOLE:
+      </div>
       <Button variant="ghost" size="sm" @click="logs = []">
         <X />
         Clear

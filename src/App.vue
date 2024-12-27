@@ -68,53 +68,8 @@ async function transcode() {
     pendingQueue.value.join(","),
   ]);
 
-  command.stderr.on("data", (data) => {
-    console.error(data);
-    logs.value.push(ParsedLog.stderr(data));
-  });
-
-  command.stdout.on("data", (data) => {
-    console.log(data);
-    const log = new ParsedLog(data);
-
-    if (log.type === LogTypes.STEP && log.step?.file) {
-      const item = form.value.queue.get(log.step.file);
-
-      if (item) {
-        item.processes = [...(item.processes ?? []), log.step];
-      }
-
-      return;
-    }
-
-    if (log.type === LogTypes.PROGRESS && log.progress?.file) {
-      const item = form.value.queue.get(log.progress.file);
-
-      if (item) {
-        item.progress = log.progress;
-      }
-
-      if (item && item.processes?.length) {
-        item.processes[item.processes.length - 1].percent =
-          log.progress.percent;
-        item.processes[item.processes.length - 1].status = log.progress.status;
-      }
-
-      return;
-    }
-
-    // if last log starts with [progress] and current log starts with [progress] replace last log
-    if (
-      logs.value.length &&
-      logs.value[logs.value.length - 1].message.startsWith("[progress]:") &&
-      log.message.startsWith("[progress]:")
-    ) {
-      logs.value[logs.value.length - 1] = log;
-      return;
-    }
-
-    logs.value.push(log);
-  });
+  command.stderr.on("data", (data) => logs.value.push(ParsedLog.stderr(data)));
+  command.stdout.on("data", stdoutHandler);
 
   command.on("error", (err) => {
     console.error(err);
@@ -138,6 +93,64 @@ async function transcode() {
 
   childProcess.value = await command.spawn();
 }
+
+// #region stdout
+
+function stdoutHandler(data: string) {
+  const log = new ParsedLog(data);
+
+  switch (log.type) {
+    case LogTypes.STEP:
+      return stdoutStepHandler(log);
+    case LogTypes.PROGRESS:
+      return stdoutProgressHandler(log);
+    default:
+      return stdoutMessageHandler(log);
+  }
+}
+
+function stdoutStepHandler(log: ParsedLog) {
+  if (!log.step?.file) return;
+
+  const item = form.value.queue.get(log.step.file);
+
+  if (!item) return;
+
+  item.processes = [...(item.processes ?? []), log.step];
+}
+
+function stdoutProgressHandler(log: ParsedLog) {
+  if (!log.progress?.file) return;
+
+  const item = form.value.queue.get(log.progress.file);
+
+  if (!item) return;
+
+  item.progress = log.progress;
+  console.log({ progressItem: { ...item } });
+  // if there is a step, update its progress & status
+  if (item.processes?.length) {
+    item.processes[item.processes.length - 1].percent = log.progress.percent;
+    item.processes[item.processes.length - 1].status = log.progress.status;
+  }
+}
+
+function stdoutMessageHandler(log: ParsedLog) {
+  // If the last log starts with "[progress]:" and the current log starts with "[progress]:", replace the last log
+  const lastMessage = logs.value[logs.value.length - 1]?.message;
+
+  if (
+    lastMessage?.startsWith("[progress]:") &&
+    log.message?.startsWith("[progress]:")
+  ) {
+    logs.value[logs.value.length - 1] = log;
+    return;
+  }
+
+  logs.value.push(log);
+}
+
+// #endregion
 
 function cancel() {
   if (childProcess.value) {

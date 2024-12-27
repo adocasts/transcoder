@@ -75,7 +75,7 @@ export default class Transcoder {
       
       for (const resolution of this.#resolutions) {
         logger.info(`[started]: processing ${resolution}p for ${item[1].filename}`)
-        logger.step(1, JSON.stringify({ process: `Transcoding ${resolution}p`, file: item[0] }))
+        logger.step({ index: 1, process: `Transcoding ${resolution}p`, file: item[0] })
 
         const playlist = await this.#transcode(item, resolution, outputFolder)
         
@@ -135,16 +135,16 @@ export default class Transcoder {
         ])
         .output(outputPlaylist)
         .on('progress', (progress) => {
-          logger.progress(`${path}: ${progress.percent}%`)
+          logger.progress({ file: path, percent: progress.percent })
           logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
         })
         .on('start', () => {
           logger.info(`[started]: transcoding ${resolution}p for ${filename}`)
-          logger.progress(`${path}: 0%`)
+          logger.progress({ file: path, percent: 0 })
         })
         .on('end', async () => {
           logger.info(`[completed]: transcoding ${resolution}p for ${filename}; output ${outputPlaylist}`)
-          logger.progress(`${path}: 100%`)
+          logger.progress({ file: path, percent: 100 })
           resolve({
             resolution: await this.#detectPlaylistResolution(outputPlaylist),
             playlistFilename: outputPlaylist.split('/').pop() as string,
@@ -154,7 +154,7 @@ export default class Transcoder {
           })
         })
         .on('error', (err) => {
-          logger.progress(`${path}: ERROR`)
+          logger.progress({ file: path, percent: -1 })
           logger.error(`[ffmpeg error]: ${err.message}`)
           resolve(null)
         })
@@ -167,7 +167,7 @@ export default class Transcoder {
     const output = `${outputFolder}/${filenameLessExt}.mp4`
     const { height, bitrate } = resolutions.get(Math.max(...this.#resolutions))!
 
-    logger.step(2, JSON.stringify({ process: 'Compressing MP4', file: path }))
+    logger.step({ index: 2, process: `Compressing MP4`, file: path })
 
     return new Promise((resolve) => {
       ffmpeg(decodeURI(path))
@@ -185,20 +185,20 @@ export default class Transcoder {
         ])
         .output(output)
         .on('progress', (progress) => {
-          logger.progress(`${path}: ${progress.percent}%`)
+          logger.progress({ file: path, percent: progress.percent })
           logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
         })
         .on('start', () => {
           logger.info(`[started]: compressing ${height}p for ${filename}`)
-          logger.progress(`${path}: 0%`)
+          logger.progress({ file: path, percent: 0 })
         })
         .on('end', async () => {
-          logger.progress(`${path}: 100%`)
+          logger.progress({ file: path, percent: 100 })
           logger.success(`[completed]: compressing ${height}p for ${filename}; output ${output}`)
           resolve(output)
         })
         .on('error', (err) => {
-          logger.progress(`${path}: ERROR`)
+          logger.progress({ file: path, percent: -1 })
           logger.error(`[ffmpeg error]: ${err.message}`)
           resolve(null)
         })
@@ -211,7 +211,7 @@ export default class Transcoder {
     const output = `${outputFolder}/${filenameLessExt}.webp`
     const duration = await this.#detectVideoDuration(path)
 
-    logger.step(3, JSON.stringify({ process: 'Generating Animated WebP', file: path }))
+    logger.step({ index: 3, process: `Generating Animated WebP`, file: path })
 
     return new Promise((resolve) => {
       ffmpeg(decodeURI(path))
@@ -228,20 +228,20 @@ export default class Transcoder {
         .on('progress', (progress) => {
           // get percentage done from progress timemark in format HH:MM:SS.000 compared to duration
           const percent = (Number(progress.timemark.split(':').pop()) / 6) * 100
-          logger.progress(`${path}: ${percent}%`)
+          logger.progress({ file: path, percent })
           logger.debug(`[progress]: ${percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
         })
         .on('start', () => {
           logger.info(`[started]: generating animated webp for ${filename}`)
-          logger.progress(`${path}: 0%`)
+          logger.progress({ file: path, percent: 0 })
         })
         .on('end', async () => {
-          logger.progress(`${path}: 100%`)
+          logger.progress({ file: path, percent: 100 })
           logger.success(`[completed]: generating animated webp for ${filename}; output ${output}`)
           resolve(output)
         })
         .on('error', (err) => {
-          logger.progress(`${path}: ERROR`)
+          logger.progress({ file: path, percent: -1 })
           logger.error(`[ffmpeg error]: ${err.message}`)
           resolve(null)
         })

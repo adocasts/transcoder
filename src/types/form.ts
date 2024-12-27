@@ -3,8 +3,10 @@ import type { TranscoderQueue } from "./transcoder";
 
 export type Form = {
   queue: TranscoderQueue;
-  resolutions: Resolutions[];
   output: string;
+  includeWebp: boolean;
+  includeMp4: boolean;
+  resolutions: Resolutions[];
 };
 
 export enum Statuses {

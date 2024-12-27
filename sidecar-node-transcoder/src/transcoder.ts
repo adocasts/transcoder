@@ -10,6 +10,8 @@ export type TranscoderOptions = {
   queue: TranscoderQueue
   resolutions: Resolutions[]
   output: string
+  includeMp4: boolean
+  includeWebp: boolean
 }
 
 export type TranscoderPlaylist = {
@@ -27,11 +29,15 @@ export default class Transcoder {
   #queue: TranscoderQueue = new Map()
   #resolutions: Resolutions[] = []
   #output: string
+  #includeMp4: boolean
+  #includeWebp: boolean
 
-  constructor({ queue, resolutions, output }: TranscoderOptions) {
+  constructor({ queue, resolutions, output, includeMp4, includeWebp }: TranscoderOptions) {
     this.#queue = queue
     this.#resolutions = resolutions
     this.#output = output
+    this.#includeMp4 = includeMp4
+    this.#includeWebp = includeWebp
   }
 
   static parseResolutions(arg: string) {
@@ -69,27 +75,9 @@ export default class Transcoder {
     const done: string[] = []
 
     for (const item of this.#queue) {
-      const resolutionPlaylists: TranscoderPlaylist[] = []
       const filenameLessExt = item[1].filename.split('.').shift() as string
       const outputFolder = `${this.#output}/${filenameLessExt}`
-      
-      for (const resolution of this.#resolutions) {
-        logger.info(`[started]: processing ${resolution}p for ${item[1].filename}`)
-        logger.step({ index: 1, process: `Transcoding ${resolution}p`, file: item[0] })
-
-        const playlist = await this.#transcode(item, resolution, outputFolder)
-        
-        if (!playlist) {
-          logger.info(`[skipping]: ${resolution}p for ${item[1].filename}; no playlist returned`)
-          continue
-        }
-
-        resolutionPlaylists.push(playlist)
-
-        logger.success(`[completed]: processing ${resolution}p for ${item[1].filename}`)
-      }
-
-      const success = await this.#buildMainPlaylist(resolutionPlaylists, outputFolder)
+      const success = await this.#transcodeResolutions(item, outputFolder)
 
       if (success) done.push(item[0])
 
@@ -98,6 +86,30 @@ export default class Transcoder {
     }
 
     logger.success(`[finished]: ${done.length} file(s) successfully processed`)
+  }
+
+  async #transcodeResolutions([path, item]: [string, TranscoderQueueFile], outputFolder: string) {
+    if (!this.#resolutions.length) return true
+    
+    const resolutionPlaylists: TranscoderPlaylist[] = []
+
+    for (const resolution of this.#resolutions) {
+      logger.info(`[started]: processing ${resolution}p for ${item.filename}`)
+      logger.step({ index: 1, process: `Transcoding ${resolution}p`, file: path })
+
+      const playlist = await this.#transcode([path, item], resolution, outputFolder)
+      
+      if (!playlist) {
+        logger.info(`[skipping]: ${resolution}p for ${item.filename}; no playlist returned`)
+        continue
+      }
+
+      resolutionPlaylists.push(playlist)
+
+      logger.success(`[completed]: processing ${resolution}p for ${item.filename}`)
+    }
+
+    return this.#buildMainPlaylist(resolutionPlaylists, outputFolder)
   }
 
   async #transcode([path, { filename }]: [string, TranscoderQueueFile], resolution: Resolutions, outputFolder: string): Promise<TranscoderPlaylist | null> {
@@ -163,9 +175,12 @@ export default class Transcoder {
   }
 
   async #compressOriginal([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
+    if (!this.#includeMp4) return null
+
     const filenameLessExt = filename.split('.').shift() as string
     const output = `${outputFolder}/${filenameLessExt}.mp4`
-    const { height, bitrate } = resolutions.get(Math.max(...this.#resolutions))!
+    const resolution = this.#resolutions.length ? Math.max(...this.#resolutions) : Resolutions.P2160
+    const { height, bitrate } = resolutions.get(resolution)!
 
     logger.step({ index: 2, process: `Compressing MP4`, file: path })
 
@@ -207,6 +222,8 @@ export default class Transcoder {
   }
 
   async #generateAnimatedWebp([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
+    if (!this.#includeWebp) return null
+
     const filenameLessExt = filename.split('.').shift() as string
     const output = `${outputFolder}/${filenameLessExt}.webp`
     const duration = await this.#detectVideoDuration(path)

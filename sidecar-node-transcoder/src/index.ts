@@ -7,17 +7,19 @@ async function main() {
   switch (command) {
     case 'transcode':
       const output = process.argv[3]
-      const resolutions = Transcoder.parseResolutions(process.argv[4])
-      const queue = Transcoder.parseFiles(process.argv[5])
+      const includeMp4 = process.argv[4] === 'true'
+      const includeWebp = process.argv[5] === 'true'
+      const resolutions = Transcoder.parseResolutions(process.argv[6])
+      const queue = Transcoder.parseFiles(process.argv[7])
 
       logger.debug(`[running]: ${command} for ${queue.size} files with ${resolutions.join(', ') || 'N/A'} resolutions`)
 
-      if (!resolutions || !output || !queue.size) {
+      if (!output || !queue.size) {
         logger.error(`missing required argument(s)`)
         return process.exit(1)
       }
       
-      const transcoder = new Transcoder({ resolutions, output, queue })
+      const transcoder = new Transcoder({ resolutions, output, queue, includeMp4, includeWebp })
       await transcoder.process()
       break;
     default:

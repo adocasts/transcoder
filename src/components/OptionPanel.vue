@@ -11,6 +11,7 @@ import {
   FilePlus,
   Folder,
   FolderPlus,
+  Info,
   Loader2,
   Play,
   X,
@@ -28,8 +29,6 @@ async function pickOutputFolder() {
     directory: true,
     multiple: false,
   });
-
-  console.log({ folder });
 
   if (!folder) return;
 
@@ -95,10 +94,10 @@ function toggleResolution(resolution: Resolutions) {
 
 <template>
   <div class="w-[300px] flex flex-col justify-between">
-    <form id="form" class="w-full flex-1 p-4 bg-slate-50">
-      <div class="flex items-center gap-4 mb-4">
+    <form id="form" class="w-full flex-1 flex flex-col p-4 gap-4 bg-slate-50">
+      <div class="flex items-center gap-4">
         <Label class="flex-1">
-          <span class="inline-block mb-1">Output directory</span>
+          <span class="inline-block mb-1">Output Directory</span>
           <Button
             type="button"
             variant="outline"
@@ -111,10 +110,13 @@ function toggleResolution(resolution: Resolutions) {
         </Label>
       </div>
 
-      <div>
-        <Label>
-          <span class="inline-block mb-2">Output Resolutions</span>
-        </Label>
+      <fieldset class="border border-slate-200 p-4 rounded-lg">
+        <legend class="-ml-2 px-2 text-sm font-bold">
+          Transcode Resolutions
+        </legend>
+        <p class="text-xs text-slate-500 -mt-4 mb-4">
+          Select which resolutions you want to transcode HLS segments for.
+        </p>
         <div class="flex flex-col gap-1.5">
           <Label
             v-for="name in enumKeys(Resolutions)"
@@ -128,7 +130,49 @@ function toggleResolution(resolution: Resolutions) {
             <span>{{ Resolutions[name] }}p</span>
           </Label>
         </div>
-      </div>
+      </fieldset>
+
+      <fieldset class="border border-slate-200 p-4 rounded-lg">
+        <legend class="-ml-2 px-2 text-sm font-bold">Compress MP4</legend>
+        <p class="text-xs text-slate-500 -mt-4 mb-1">
+          Include a compressed version of the MP4 file(s)? Useful for
+          downloading.
+        </p>
+        <p class="text-xs text-slate-500 mb-4 flex items-center">
+          <Info class="w-3 h-3 mr-2" />
+          <span
+            >Resolution:
+            {{
+              form.resolutions.length
+                ? Math.max(...form.resolutions)
+                : Resolutions.P2160
+            }}p</span
+          >
+        </p>
+        <div class="flex flex-col gap-1.5">
+          <Label class="flex items-center gap-x-2">
+            <Checkbox v-model:checked="form.includeMp4" />
+            <span>Yes, Compress MP4</span>
+          </Label>
+        </div>
+      </fieldset>
+
+      <fieldset class="border border-slate-200 p-4 rounded-lg">
+        <legend class="-ml-2 px-2 text-sm font-bold">Generate WebP</legend>
+        <p class="text-xs text-slate-500 -mt-4 mb-1">
+          Generate a 6s animated webp image?
+        </p>
+        <p class="text-xs text-slate-500 mb-4 flex items-center">
+          <Info class="w-3 h-3 mr-2" />
+          <span>Width: 320p</span>
+        </p>
+        <div class="flex flex-col gap-1.5">
+          <Label class="flex items-center gap-x-2">
+            <Checkbox v-model:checked="form.includeWebp" />
+            <span>Yes, Generate WebP</span>
+          </Label>
+        </div>
+      </fieldset>
     </form>
 
     <div class="w-full flex flex-col gap-2 p-4 bg-slate-100">
@@ -171,7 +215,9 @@ function toggleResolution(resolution: Resolutions) {
       >
         <Play v-if="status !== Statuses.PROCESSING" class="absolute left-3" />
         <Loader2 v-else class="animate-spin absolute left-3" />
-        {{ status === Statuses.PROCESSING ? "Running ..." : "Transcode" }}
+        <span v-if="status === Statuses.PROCESSING"> Running... </span>
+        <span v-else-if="form.resolutions.length"> Transcode </span>
+        <span v-else> Run </span>
       </Button>
     </div>
   </div>

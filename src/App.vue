@@ -27,6 +27,9 @@ const canNotify = ref(false);
 
 const form = ref<Form>({
   queue: new Map([]),
+  output: "",
+  includeWebp: true,
+  includeMp4: true,
   resolutions: [
     Resolutions.P2160,
     Resolutions.P1440,
@@ -34,7 +37,6 @@ const form = ref<Form>({
     Resolutions.P720,
     Resolutions.P480,
   ],
-  output: "",
 });
 
 const showConsole = computed(
@@ -60,10 +62,12 @@ async function transcode() {
 
   status.value = Statuses.PROCESSING;
 
-  const { resolutions, output } = form.value;
+  const { resolutions, output, includeMp4, includeWebp } = form.value;
   const command = Command.sidecar("binaries/node-transcoder", [
     "transcode",
     output,
+    includeMp4.toString(),
+    includeWebp.toString(),
     resolutions.join(","),
     pendingQueue.value.join(","),
   ]);
@@ -181,15 +185,22 @@ onMounted(async () => {
 
   const resolutions = await store.get<Resolutions[]>("resolutions");
   const output = await store.get<string>("output");
+  const includeMp4 = await store.get<boolean>("includeMp4");
+  const includeWebp = await store.get<boolean>("includeWebp");
 
   form.value.resolutions = resolutions || form.value.resolutions;
   form.value.output = output || (await videoDir());
+  form.value.includeMp4 = typeof includeMp4 === "boolean" ? includeMp4 : true;
+  form.value.includeWebp =
+    typeof includeWebp === "boolean" ? includeWebp : true;
 });
 
 onUnmounted(async () => {
   if (store) {
     await store.set("resolutions", form.value.resolutions);
     await store.set("output", form.value.output);
+    await store.set("includeWebp", form.value.includeWebp);
+    await store.set("includeMp4", form.value.includeMp4);
     await store.save();
   }
 });

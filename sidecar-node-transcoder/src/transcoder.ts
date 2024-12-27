@@ -55,7 +55,7 @@ export default class Transcoder {
       const extname = filename.split(".").pop() as string;
 
       if (!allowedExtensions.includes(extname)) {
-        logger.error(`unsupported file will be skipped: ${file}`)
+        logger.error(`unsupported file type, file will be skipped: ${file}`)
         continue;
       }
 
@@ -74,7 +74,7 @@ export default class Transcoder {
       const outputFolder = `${this.#output}/${filenameLessExt}`
       
       for (const resolution of this.#resolutions) {
-        logger.info(`[processing]: ${resolution}p for ${item[1].filename}`)
+        logger.info(`[started]: processing ${resolution}p for ${item[1].filename}`)
         logger.step(1, JSON.stringify({ process: `Transcoding ${resolution}p`, file: item[0] }))
 
         const playlist = await this.#transcode(item, resolution, outputFolder)
@@ -86,24 +86,15 @@ export default class Transcoder {
 
         resolutionPlaylists.push(playlist)
 
-        logger.success(`[done]: ${resolution}p for ${item[1].filename}`)
+        logger.success(`[completed]: processing ${resolution}p for ${item[1].filename}`)
       }
 
       const success = await this.#buildMainPlaylist(resolutionPlaylists, outputFolder)
 
       if (success) done.push(item[0])
 
-      logger.step(2, JSON.stringify({ process: 'Compressing MP4', file: item[0] }))
-
-      const compressedOutput = await this.#compressOriginal(item, outputFolder)
-
-      if (compressedOutput) logger.success(`[done]: compressed ${item[1].filename}`)
-
-      logger.step(3, JSON.stringify({ process: 'Generating Animated WebP', file: item[0] }))
-
-      const animatedOutput = await this.#generateAnimatedWebp(item, outputFolder)
-
-      if (animatedOutput) logger.success(`[done]: generated animated webp for ${item[1].filename}`)
+      await this.#compressOriginal(item, outputFolder)
+      await this.#generateAnimatedWebp(item, outputFolder)
     }
 
     logger.success(`[finished]: ${done.length} file(s) successfully processed`)
@@ -123,10 +114,8 @@ export default class Transcoder {
       return null
     }
 
-    logger.info(`[creating]: ${resolution}p destination ${resolutionOutput}`)
-
     await mkdir(resolutionOutput, { recursive: true })
-
+    
     return new Promise((resolve) => {
       ffmpeg(decodeURI(path))
         .videoCodec('libx264')
@@ -150,13 +139,12 @@ export default class Transcoder {
           logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
         })
         .on('start', () => {
-          logger.info(`[transcoding started]: ${resolution}p for ${filename}`)
+          logger.info(`[started]: transcoding ${resolution}p for ${filename}`)
           logger.progress(`${path}: 0%`)
         })
         .on('end', async () => {
-          logger.info(`[transcoding completed]: ${resolution}p for ${filename}`)
+          logger.info(`[completed]: transcoding ${resolution}p for ${filename}; output ${outputPlaylist}`)
           logger.progress(`${path}: 100%`)
-          
           resolve({
             resolution: await this.#detectPlaylistResolution(outputPlaylist),
             playlistFilename: outputPlaylist.split('/').pop() as string,
@@ -179,7 +167,7 @@ export default class Transcoder {
     const output = `${outputFolder}/${filenameLessExt}.mp4`
     const { height, bitrate } = resolutions.get(Math.max(...this.#resolutions))!
 
-    logger.info(`[compressing]: ${filename} to ${output}`)
+    logger.step(2, JSON.stringify({ process: 'Compressing MP4', file: path }))
 
     return new Promise((resolve) => {
       ffmpeg(decodeURI(path))
@@ -201,13 +189,12 @@ export default class Transcoder {
           logger.debug(`[progress]: ${progress.percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
         })
         .on('start', () => {
-          logger.info(`[compression started]: ${height}p for ${filename}`)
+          logger.info(`[started]: compressing ${height}p for ${filename}`)
           logger.progress(`${path}: 0%`)
         })
         .on('end', async () => {
-          logger.info(`[compression completed]: ${height}p for ${filename}`)
           logger.progress(`${path}: 100%`)
-          
+          logger.success(`[completed]: compressing ${height}p for ${filename}; output ${output}`)
           resolve(output)
         })
         .on('error', (err) => {
@@ -224,7 +211,7 @@ export default class Transcoder {
     const output = `${outputFolder}/${filenameLessExt}.webp`
     const duration = await this.#detectVideoDuration(path)
 
-    logger.info(`[generating]: animated preview for ${filename} to ${output}`)
+    logger.step(3, JSON.stringify({ process: 'Generating Animated WebP', file: path }))
 
     return new Promise((resolve) => {
       ffmpeg(decodeURI(path))
@@ -245,13 +232,12 @@ export default class Transcoder {
           logger.debug(`[progress]: ${percent?.toFixed(2)}% @ frame ${progress.frames}; timemark ${progress.timemark}`)
         })
         .on('start', () => {
-          logger.info(`[started]: animated webp for ${filename}`)
+          logger.info(`[started]: generating animated webp for ${filename}`)
           logger.progress(`${path}: 0%`)
         })
         .on('end', async () => {
-          logger.info(`[completed]: animated webp for ${filename}`)
           logger.progress(`${path}: 100%`)
-          
+          logger.success(`[completed]: generating animated webp for ${filename}; output ${output}`)
           resolve(output)
         })
         .on('error', (err) => {
@@ -269,6 +255,8 @@ export default class Transcoder {
       return
     }
 
+    logger.debug(`[started]: generating main playlist ${outputFolder}/master.m3u8`);
+
     const main = ['#EXTM3U', '#EXT-X-VERSION:3']
 
     for (const playlist of playlists) {
@@ -279,11 +267,9 @@ export default class Transcoder {
 
     const final = main.join('\n')
 
-    logger.debug(`[creating]: main playlist ${outputFolder}/master.m3u8`)
-
     await writeFile(`${outputFolder}/master.m3u8`, final)
 
-    logger.success(`[done]: main playlist ${outputFolder}/master.m3u8`)
+    logger.success(`[completed]: generating main playlist ${outputFolder}/master.m3u8`)
 
     return true
   }

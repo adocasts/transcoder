@@ -28,6 +28,7 @@ const canNotify = ref(false);
 const form = ref<Form>({
   queue: new Map([]),
   output: "",
+  useCuid: true,
   includeWebp: true,
   includeMp4: true,
   resolutions: [
@@ -62,10 +63,11 @@ async function transcode() {
 
   status.value = Statuses.PROCESSING;
 
-  const { resolutions, output, includeMp4, includeWebp } = form.value;
+  const { resolutions, output, includeMp4, includeWebp, useCuid } = form.value;
   const command = Command.sidecar("binaries/node-transcoder", [
     "transcode",
     output,
+    useCuid.toString(),
     includeMp4.toString(),
     includeWebp.toString(),
     resolutions.join(","),
@@ -200,6 +202,7 @@ onUnmounted(async () => {
   if (store) {
     await store.set("resolutions", form.value.resolutions);
     await store.set("output", form.value.output);
+    await store.set("useCuid", form.value.useCuid);
     await store.set("includeWebp", form.value.includeWebp);
     await store.set("includeMp4", form.value.includeMp4);
     await store.save();

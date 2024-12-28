@@ -111,6 +111,19 @@ function toggleResolution(resolution: Resolutions) {
       </div>
 
       <fieldset class="border border-slate-200 p-4 rounded-lg">
+        <legend class="-ml-2 px-2 text-sm font-bold">Output Id</legend>
+        <p class="text-xs text-slate-500 -mt-4 mb-1">
+          Use an id for each item's output folder instead of the filename?
+        </p>
+        <div class="flex flex-col gap-1.5">
+          <Label class="flex items-center gap-x-2">
+            <Checkbox v-model:checked="form.useCuid" />
+            <span>Give each item a unique id</span>
+          </Label>
+        </div>
+      </fieldset>
+
+      <fieldset class="border border-slate-200 p-4 rounded-lg">
         <legend class="-ml-2 px-2 text-sm font-bold">
           Transcode Resolutions
         </legend>

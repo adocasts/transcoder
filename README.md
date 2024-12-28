@@ -19,7 +19,7 @@ Get even more by joining [Adocasts Plus](https://adocasts.com/pricing)
 
 MacOS desktop application that transcodes a queue of video files into an HLS streamable playlist consisting of video segments for the desired resolutions.
 
-For the output destination selected, each video's transcoded playlist will be placed inside a folder named after the file. For each playlist, the resolution segments will be placed in a subfolder named for the resolution.
+For the output destination selected, when the output id option is deselected each video's transcoded playlist will be placed inside a folder named after the file. When the output id option is selected, each video will be placed inside a folder named with a unique id. For each playlist, the resolution segments will be placed in a subfolder named for the resolution.
 
 For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions 2160p and 1080p are selected, the output will look as such:
 
@@ -37,8 +37,8 @@ For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions
         │   ├── adonisjs-quick-tip_2160_002.ts
         │   ├── adonisjs-quick-tip_2160_003.ts
         │   └── adonisjs-quick-tip_2160.m3u8
-        ├── adonisjs-quick-tip.mp4 [compressed original]
-        ├── adonisjs-quick-tip.webp [6s animated webp]
+        ├── video.mp4 [compressed original]
+        ├── video.webp [6s animated webp]
         └── master.m3u8
 ```
 

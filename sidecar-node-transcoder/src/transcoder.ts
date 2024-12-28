@@ -2,6 +2,7 @@ import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
 import logger from "./logger.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { Resolutions, resolutions, allowedExtensions } from '../../src/lib/transcoder.js'
+import { createId as cuid } from '@paralleldrive/cuid2'
 
 export type TranscoderQueueFile = { filename: string; extname: string }
 export type TranscoderQueue = Map<string, TranscoderQueueFile>
@@ -12,6 +13,7 @@ export type TranscoderOptions = {
   output: string
   includeMp4: boolean
   includeWebp: boolean
+  useCuid: boolean
 }
 
 export type TranscoderPlaylist = {
@@ -32,13 +34,15 @@ export default class Transcoder {
   #output: string
   #includeMp4: boolean
   #includeWebp: boolean
+  #useCuid: boolean
 
-  constructor({ queue, resolutions, output, includeMp4, includeWebp }: TranscoderOptions) {
+  constructor({ queue, resolutions, output, includeMp4, includeWebp, useCuid }: TranscoderOptions) {
     this.#queue = queue
     this.#resolutions = resolutions
     this.#output = output
     this.#includeMp4 = includeMp4
     this.#includeWebp = includeWebp
+    this.#useCuid = useCuid
   }
 
   static parseResolutions(arg: string) {
@@ -88,7 +92,8 @@ export default class Transcoder {
 
     for (const item of this.#queue) {
       const filenameLessExt = item[1].filename.split('.').shift() as string
-      const outputFolder = `${this.#output}/${filenameLessExt}`
+      const fileFolder = this.#useCuid ? cuid() : filenameLessExt
+      const outputFolder = `${this.#output}/${fileFolder}`
       const success = await this.#transcodeResolutions(item, outputFolder)
 
       if (success) done.push(item[0])
@@ -189,8 +194,7 @@ export default class Transcoder {
   async #compressOriginal([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
     if (!this.#includeMp4) return null
 
-    const filenameLessExt = filename.split('.').shift() as string
-    const output = `${outputFolder}/${filenameLessExt}.mp4`
+    const output = `${outputFolder}/video.mp4`
     const resolution = this.#resolutions.length ? Math.max(...this.#resolutions) : Resolutions.P2160
     const { height, bitrate } = resolutions.get(resolution)!
 
@@ -236,8 +240,7 @@ export default class Transcoder {
   async #generateAnimatedWebp([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
     if (!this.#includeWebp) return null
 
-    const filenameLessExt = filename.split('.').shift() as string
-    const output = `${outputFolder}/${filenameLessExt}.webp`
+    const output = `${outputFolder}/video.webp`
     const duration = await this.#detectVideoDuration(path)
 
     logger.step({ index: 3, process: `Generating Animated WebP`, file: path })
@@ -290,7 +293,7 @@ export default class Transcoder {
       return
     }
 
-    logger.info(`[started]: generating main playlist ${outputFolder}/master.m3u8`);
+    logger.info(`[started]: generating main playlist ${outputFolder}/main.m3u8`);
 
     const main = ['#EXTM3U', '#EXT-X-VERSION:3']
 
@@ -302,9 +305,9 @@ export default class Transcoder {
 
     const final = main.join('\n')
 
-    await writeFile(`${outputFolder}/master.m3u8`, final)
+    await writeFile(`${outputFolder}/main.m3u8`, final)
 
-    logger.success(`[completed]: generating main playlist ${outputFolder}/master.m3u8`)
+    logger.success(`[completed]: generating main playlist ${outputFolder}/main.m3u8`)
 
     return true
   }

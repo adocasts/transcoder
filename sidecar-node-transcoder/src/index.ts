@@ -6,11 +6,13 @@ const command = process.argv[2];
 async function main() {
   switch (command) {
     case 'transcode':
-      const output = process.argv[3]
-      const includeMp4 = process.argv[4] === 'true'
-      const includeWebp = process.argv[5] === 'true'
-      const resolutions = Transcoder.parseResolutions(process.argv[6])
-      const queue = Transcoder.parseFiles(process.argv[7])
+      let index = 2
+      const output = process.argv[++index]
+      const useCuid = process.argv[++index] === 'true'
+      const includeMp4 = process.argv[++index] === 'true'
+      const includeWebp = process.argv[++index] === 'true'
+      const resolutions = Transcoder.parseResolutions(process.argv[++index])
+      const queue = Transcoder.parseFiles(process.argv[++index])
 
       logger.debug(`[running]: ${command} for ${queue.size} files with ${resolutions.join(', ') || 'N/A'} resolutions`)
 
@@ -19,7 +21,7 @@ async function main() {
         return process.exit(1)
       }
       
-      const transcoder = new Transcoder({ resolutions, output, queue, includeMp4, includeWebp })
+      const transcoder = new Transcoder({ resolutions, output, queue, includeMp4, includeWebp, useCuid })
 
       // process.stdin.resume()
       process.stdin.on('data', (data) => {

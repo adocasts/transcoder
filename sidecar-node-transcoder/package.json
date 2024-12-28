@@ -17,6 +17,7 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
     "fluent-ffmpeg": "^2.1.3"
   }
 }

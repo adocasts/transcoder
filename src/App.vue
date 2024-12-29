@@ -31,6 +31,8 @@ const form = ref<Form>({
   useCuid: true,
   includeWebp: true,
   includeMp4: true,
+  keepPrefix: true,
+  prefixSeparator: "-",
   resolutions: [
     Resolutions.P2160,
     Resolutions.P1440,
@@ -63,14 +65,14 @@ async function transcode() {
 
   status.value = Statuses.PROCESSING;
 
-  const { resolutions, output, includeMp4, includeWebp, useCuid } = form.value;
   const command = Command.sidecar("binaries/node-transcoder", [
     "transcode",
-    output,
-    useCuid.toString(),
-    includeMp4.toString(),
-    includeWebp.toString(),
-    resolutions.join(","),
+    form.value.output,
+    form.value.useCuid.toString(),
+    form.value.includeMp4.toString(),
+    form.value.includeWebp.toString(),
+    form.value.keepPrefix ? form.value.prefixSeparator : "",
+    form.value.resolutions.join(","),
     pendingQueue.value.join(","),
   ]);
 
@@ -190,12 +192,18 @@ onMounted(async () => {
   const output = await store.get<string>("output");
   const includeMp4 = await store.get<boolean>("includeMp4");
   const includeWebp = await store.get<boolean>("includeWebp");
+  const useCuid = await store.get<boolean>("useCuid");
+  const keepPrefix = await store.get<boolean>("keepPrefix");
+  const prefixSeparator = await store.get<string>("prefixSeparator");
 
   form.value.resolutions = resolutions || form.value.resolutions;
   form.value.output = output || (await videoDir());
   form.value.includeMp4 = typeof includeMp4 === "boolean" ? includeMp4 : true;
   form.value.includeWebp =
     typeof includeWebp === "boolean" ? includeWebp : true;
+  form.value.useCuid = typeof useCuid === "boolean" ? useCuid : true;
+  form.value.keepPrefix = typeof keepPrefix === "boolean" ? keepPrefix : true;
+  form.value.prefixSeparator = prefixSeparator || form.value.prefixSeparator;
 });
 
 onUnmounted(async () => {

@@ -13,6 +13,7 @@ export type TranscoderOptions = {
   output: string
   includeMp4: boolean
   includeWebp: boolean
+  prefixSeparator: string
   useCuid: boolean
 }
 
@@ -34,14 +35,16 @@ export default class Transcoder {
   #output: string
   #includeMp4: boolean
   #includeWebp: boolean
+  #prefixSeparator: string
   #useCuid: boolean
 
-  constructor({ queue, resolutions, output, includeMp4, includeWebp, useCuid }: TranscoderOptions) {
+  constructor({ queue, resolutions, output, includeMp4, includeWebp, prefixSeparator, useCuid }: TranscoderOptions) {
     this.#queue = queue
     this.#resolutions = resolutions
     this.#output = output
     this.#includeMp4 = includeMp4
     this.#includeWebp = includeWebp
+    this.#prefixSeparator = prefixSeparator
     this.#useCuid = useCuid
   }
 
@@ -91,9 +94,7 @@ export default class Transcoder {
     const done: string[] = []
 
     for (const item of this.#queue) {
-      const filenameLessExt = item[1].filename.split('.').shift() as string
-      const fileFolder = this.#useCuid ? cuid() : filenameLessExt
-      const outputFolder = `${this.#output}/${fileFolder}`
+      const outputFolder = this.#getOutputFolder(item[1])
       const success = await this.#transcodeResolutions(item, outputFolder)
 
       if (success) done.push(item[0])
@@ -346,5 +347,20 @@ export default class Transcoder {
         resolve(Number(duration))
       })
     })
+  }
+
+  #getOutputFolder(info: TranscoderQueueFile) {
+    const filenameLessExt = info.filename.split('.').shift() as string
+    const filenamePrefix = filenameLessExt.split(this.#prefixSeparator).shift() as string
+
+    if (!this.#useCuid) {
+      return `${this.#output}/${filenameLessExt}`
+    }
+
+    if (!this.#prefixSeparator) {
+      return `${this.#output}/${cuid()}`
+    }
+
+    return `${this.#output}/${filenamePrefix}${this.#prefixSeparator}${cuid()}`
   }
 }

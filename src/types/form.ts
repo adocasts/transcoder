@@ -7,6 +7,8 @@ export type Form = {
   useCuid: boolean;
   includeWebp: boolean;
   includeMp4: boolean;
+  keepPrefix: boolean;
+  prefixSeparator: string;
   resolutions: Resolutions[];
 };
 

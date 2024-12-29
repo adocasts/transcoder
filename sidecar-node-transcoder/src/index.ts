@@ -11,6 +11,7 @@ async function main() {
       const useCuid = process.argv[++index] === 'true'
       const includeMp4 = process.argv[++index] === 'true'
       const includeWebp = process.argv[++index] === 'true'
+      const prefixSeparator = process.argv[++index]
       const resolutions = Transcoder.parseResolutions(process.argv[++index])
       const queue = Transcoder.parseFiles(process.argv[++index])
 
@@ -21,7 +22,15 @@ async function main() {
         return process.exit(1)
       }
       
-      const transcoder = new Transcoder({ resolutions, output, queue, includeMp4, includeWebp, useCuid })
+      const transcoder = new Transcoder({ 
+        resolutions, 
+        output, 
+        queue, 
+        includeMp4, 
+        includeWebp, 
+        prefixSeparator,
+        useCuid 
+      })
 
       // process.stdin.resume()
       process.stdin.on('data', (data) => {
@@ -34,6 +43,8 @@ async function main() {
       })
 
       await transcoder.process()
+
+      process.exit(0)
       break;
     default:
       logger.error('unknown command '.concat(command))

@@ -7,7 +7,9 @@ import { Form, Statuses } from "~/types/form";
 import Checkbox from "./ui/checkbox/Checkbox.vue";
 import Label from "./ui/label/Label.vue";
 import Button from "./ui/button/Button.vue";
+import Input from "./ui/input/Input.vue";
 import {
+  CornerDownRight,
   FilePlus,
   Folder,
   FolderPlus,
@@ -119,6 +121,28 @@ function toggleResolution(resolution: Resolutions) {
           <Label class="flex items-center gap-x-2">
             <Checkbox v-model:checked="form.useCuid" />
             <span>Give each item a unique id</span>
+          </Label>
+
+          <Label v-show="form.useCuid" class="flex items-center gap-x-2">
+            <CornerDownRight class="w-4 h-4" />
+            <Checkbox v-model:checked="form.keepPrefix" />
+            <span
+              >Keep prefix
+              <span class="text-slate-500" style="font-size: 0.6rem"
+                >(ex: prefix{{ form.prefixSeparator }}{id}.mp4)</span
+              >
+            </span>
+          </Label>
+
+          <Label
+            v-show="form.useCuid && form.keepPrefix"
+            class="ml-6 flex items-center gap-2"
+          >
+            <Input
+              class="text-xs w-[16px] !h-[16px] !rounded !px-1"
+              v-model="form.prefixSeparator"
+            />
+            <span class="block">Prefix Separator</span>
           </Label>
         </div>
       </fieldset>

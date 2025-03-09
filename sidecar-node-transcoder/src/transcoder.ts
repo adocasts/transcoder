@@ -95,6 +95,9 @@ export default class Transcoder {
 
     for (const item of this.#queue) {
       const outputFolder = this.#getOutputFolder(item[1])
+
+      await mkdir(outputFolder, { recursive: true })
+
       const success = await this.#transcodeResolutions(item, outputFolder)
 
       if (success) done.push(item[0])
@@ -152,11 +155,10 @@ export default class Transcoder {
         .videoCodec('libx264')
         .videoBitrate(`${bitrate}k`)
         .audioCodec('aac')
-        .audioBitrate('128k')
+        .audioBitrate('148k')
         .outputOptions([
           '-filter:v', `scale=-2:${height}`,
-          '-preset', 'veryfast',
-          '-crf', '20',
+          '-preset', 'fast',
           '-g', '48',
           '-keyint_min', '48',
           '-sc_threshold', '0',
@@ -197,24 +199,25 @@ export default class Transcoder {
 
     const output = `${outputFolder}/video.mp4`
     const resolution = this.#resolutions.length ? Math.max(...this.#resolutions) : Resolutions.P2160
-    const { height, bitrate } = resolutions.get(resolution)!
+    const { height } = resolutions.get(resolution)!
 
     logger.step({ index: 2, process: `Compressing MP4`, file: path })
 
     return new Promise((resolve) => {
       this.#command = ffmpeg(decodeURI(path))
         .output(output)
-        .videoCodec('libx264')
-        .videoBitrate(`${bitrate}k`)
+        .videoCodec('libx265')
         .audioCodec('aac')
-        .audioBitrate('128k')
+        .audioBitrate('160k')
         .outputOptions([
           '-filter:v', `scale=-2:${height}`,
-          '-preset', 'veryfast',
-          '-crf', '20',
+          '-preset', 'fast',
+          '-crf', '24',
+          '-tag:v', 'hvc1',
           '-g', '48',
           '-keyint_min', '48',
           '-sc_threshold', '0',
+          '-x265-params', 'profile=main10'
         ])
 
       this.#command.on('progress', (progress) => {

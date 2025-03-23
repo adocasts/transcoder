@@ -153,15 +153,13 @@ export default class Transcoder {
       this.#command = ffmpeg(decodeURI(path))
         .output(outputPlaylist)
         .videoCodec('libx264')
-        .videoBitrate(`${bitrate}k`)
+        // .videoBitrate(`${bitrate}k`)
         .audioCodec('aac')
         .audioBitrate('148k')
         .outputOptions([
           '-filter:v', `scale=-2:${height}`,
           '-preset', 'fast',
-          '-g', '48',
-          '-keyint_min', '48',
-          '-sc_threshold', '0',
+          '-crf', '28',
           '-hls_time', '4',
           '-hls_playlist_type', 'vod',
           '-hls_segment_filename', outputSegment,
@@ -208,15 +206,12 @@ export default class Transcoder {
         .output(output)
         .videoCodec('libx265')
         .audioCodec('aac')
-        .audioBitrate('160k')
+        .audioBitrate('148k')
         .outputOptions([
           '-filter:v', `scale=-2:${height}`,
           '-preset', 'fast',
-          '-crf', '24',
+          '-crf', '28',
           '-tag:v', 'hvc1',
-          '-g', '48',
-          '-keyint_min', '48',
-          '-sc_threshold', '0',
           '-x265-params', 'profile=main10'
         ])
 

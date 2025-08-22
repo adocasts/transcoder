@@ -3,6 +3,7 @@ import logger from "./logger.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { Resolutions, resolutions, allowedExtensions } from '../../src/lib/transcoder.js'
 import { createId as cuid } from '@paralleldrive/cuid2'
+import { exec, spawn } from "node:child_process"
 
 export type TranscoderQueueFile = { filename: string; extname: string }
 export type TranscoderQueue = Map<string, TranscoderQueueFile>
@@ -104,6 +105,7 @@ export default class Transcoder {
 
       await this.#compressOriginal(item, outputFolder)
       await this.#generateAnimatedWebp(item, outputFolder)
+      // await this.#transcribe(item, outputFolder)
     }
 
     logger.success(`[finished]: ${done.length} file(s) successfully processed`)
@@ -277,6 +279,85 @@ export default class Transcoder {
 
       this.#command.on('error', (err) => this.#onFfmpegError(path, err, resolve))
       this.#command.run()
+    })
+  }
+
+  async #transcribe([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
+    logger.step({ index: 4, process: `Transcribing`, file: path })
+
+    // use compress mp4 if enabled, otherwise use original video
+    const source = this.#includeMp4 ? `${outputFolder}/video.mp4` : path
+    const srtFilename = this.#includeMp4 ? 'video' : filename
+
+    logger.progress({ file: path, percent: 0 })
+
+    return new Promise((resolve) => {
+      const whisperArgs = [
+        `"${source}"`,
+        '--output_dir', `"${outputFolder}"`,
+        '--output_format', 'all',
+        '--model', 'large-v2',
+        '--language', 'en',
+        '--verbose', 'False'
+      ]
+
+      const renameAndCleanUpCommand = `
+        mv "${outputFolder}/${srtFilename}.srt" "${outputFolder}/en.srt" &&
+        rm "${outputFolder}"/*.{vtt,tsv,json}
+      `
+
+      logger.info(`[started]: transcribing ${filename}`)
+      logger.info(`[note]: This may take a while depending on your hardware and file size.`)
+
+      // execute the command using `spawn`
+      const whisperProcess = spawn('whisper', whisperArgs, { shell: true });
+
+      // capture stdout data in real-time
+      whisperProcess.stdout.on('data', (data) => {
+        logger.debug('[stdout] ' + data.toString())
+      });
+
+      // capture stderr data in real-time
+      whisperProcess.stderr.on('data', (data) => {
+        if (data.includes('%')) {
+          const percent = Number(data.toString().split('|').at(0).replace('%', '').trim())
+          logger.progress({ file: path, percent })
+        }
+        logger.debug(data.toString())
+      });
+
+      // `spawn` emits a 'close' event when the process finishes
+      whisperProcess.on('close', (code) => {
+        if (code !== 0) {
+          logger.error(`[error]: Whisper process exited with code ${code}. Transcription failed.`);
+          resolve(null)
+          return
+        }
+
+        logger.success(`[completed]: transcribing ${filename}; post-processing...`)
+
+        // execute the post-processing command after the main process finishes
+        exec(renameAndCleanUpCommand, (error) => {
+          logger.progress({ file: path, percent: 100 })
+
+          if (error) {
+            logger.error(`[post-processing error]: ${error.message}`)
+            resolve(null)
+            return
+          }
+
+          logger.info(`[completed]: post-processing and clean up`)
+
+          resolve(`${outputFolder}/en.srt`)
+        })
+
+      })
+
+      // handle errors if the command itself cannot be executed
+      whisperProcess.on('error', (err) => {
+        logger.error(`[error]: Failed to start the whisper process. Error: ${err.message}`)
+        resolve(null)
+      });
     })
   }
 

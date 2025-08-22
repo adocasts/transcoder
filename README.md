@@ -42,11 +42,26 @@ For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions
         └── master.m3u8
 ```
 
+### Goals
+
+This application was specifically built for usage with the Adocasts stack and has only been tested on a MacOS system.
+Additional requirements, listed below, need to be installed on your system in order for this application to run successfully.
+
+### Requirements
+
+The following requirements need to be installed on your system for this application to work and is not bundled as part of this application.
+
+- [ ] [Ffmpeg](https://ffmpeg.org/) - Used to transcode and compress videos
+  <!-- - [ ] [Whisper](https://github.com/openai/whisper/) - Used to generate a transcription of videos -->
+  <!-- - [ ] [Translate Shell](https://github.com/soimort/translate-shell) - Used to translate the video transcriptions -->
+
 ### Todos
 
 - [x] Include compressed video file (for downloading)
 - [x] Generate 6s animated webp image
 - [x] Killing NodeJS spawn (cancelling) doesn't cascade through to ffmpeg
+- [ ] Generate transcription from video
+- [ ] Translate video transcription to Spanish and French
 - [ ] Upload generated files to Cloudflare R2
 
 ### Thank Yous

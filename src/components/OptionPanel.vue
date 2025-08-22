@@ -95,7 +95,7 @@ function toggleResolution(resolution: Resolutions) {
 </script>
 
 <template>
-  <div class="w-[300px] flex flex-col justify-between">
+  <div class="w-[var(--aside-width)] flex flex-col justify-between">
     <form id="form" class="w-full flex-1 flex flex-col p-4 gap-4 bg-slate-50">
       <div class="flex items-center gap-4">
         <Label class="flex-1">
@@ -207,6 +207,26 @@ function toggleResolution(resolution: Resolutions) {
           <Label class="flex items-center gap-x-2">
             <Checkbox v-model:checked="form.includeWebp" />
             <span>Yes, Generate WebP</span>
+          </Label>
+        </div>
+      </fieldset>
+
+      <fieldset class="border border-slate-200 p-4 rounded-lg">
+        <legend class="-ml-2 px-2 text-sm font-bold">
+          Transcribe &amp; Translate
+        </legend>
+        <p class="text-xs text-slate-500 -mt-4 mb-1">
+          Generate a transcribed txt and subtitle files; subtitles will also be
+          translated.
+        </p>
+        <p class="text-xs text-slate-500 mb-4 flex items-center">
+          <Info class="w-3 h-3 mr-2" />
+          <span>Translates to: es, fr, de, pl, pt-BR</span>
+        </p>
+        <div class="flex flex-col gap-1.5">
+          <Label class="flex items-center gap-x-2">
+            <Checkbox v-model:checked="form.includeTranscription" />
+            <span>Yes, Transcribe &amp; Translate</span>
           </Label>
         </div>
       </fieldset>

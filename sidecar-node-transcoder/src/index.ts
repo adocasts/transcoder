@@ -11,6 +11,7 @@ async function main() {
       const useCuid = process.argv[++index] === 'true'
       const includeMp4 = process.argv[++index] === 'true'
       const includeWebp = process.argv[++index] === 'true'
+      const includeTranscription = process.argv[++index] === 'true'
       const prefixSeparator = process.argv[++index]
       const resolutions = Transcoder.parseResolutions(process.argv[++index])
       const queue = Transcoder.parseFiles(process.argv[++index])
@@ -28,6 +29,7 @@ async function main() {
         queue, 
         includeMp4, 
         includeWebp, 
+        includeTranscription,
         prefixSeparator,
         useCuid 
       })

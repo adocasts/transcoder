@@ -60,8 +60,8 @@ The following requirements need to be installed on your system for this applicat
 - [x] Include compressed video file (for downloading)
 - [x] Generate 6s animated webp image
 - [x] Killing NodeJS spawn (cancelling) doesn't cascade through to ffmpeg
-- [ ] Generate transcription from video
-- [ ] Translate video transcription to Spanish and French
+- [x] Generate transcription from video
+- [x] Translate video transcription to Spanish and French
 - [ ] Upload generated files to Cloudflare R2
 
 ### Thank Yous

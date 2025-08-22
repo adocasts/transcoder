@@ -31,6 +31,7 @@ const form = ref<Form>({
   useCuid: true,
   includeWebp: true,
   includeMp4: true,
+  includeTranscription: true,
   keepPrefix: true,
   prefixSeparator: "-",
   resolutions: [
@@ -71,6 +72,7 @@ async function transcode() {
     form.value.useCuid.toString(),
     form.value.includeMp4.toString(),
     form.value.includeWebp.toString(),
+    form.value.includeTranscription.toString(),
     form.value.keepPrefix ? form.value.prefixSeparator : "",
     form.value.resolutions.join(","),
     pendingQueue.value.join(","),
@@ -192,6 +194,7 @@ onMounted(async () => {
   const output = await store.get<string>("output");
   const includeMp4 = await store.get<boolean>("includeMp4");
   const includeWebp = await store.get<boolean>("includeWebp");
+  const includeTranscription = await store.get<boolean>("includeTranscription");
   const useCuid = await store.get<boolean>("useCuid");
   const keepPrefix = await store.get<boolean>("keepPrefix");
   const prefixSeparator = await store.get<string>("prefixSeparator");
@@ -201,6 +204,8 @@ onMounted(async () => {
   form.value.includeMp4 = typeof includeMp4 === "boolean" ? includeMp4 : true;
   form.value.includeWebp =
     typeof includeWebp === "boolean" ? includeWebp : true;
+  form.value.includeTranscription =
+    typeof includeTranscription === "boolean" ? includeTranscription : true;
   form.value.useCuid = typeof useCuid === "boolean" ? useCuid : true;
   form.value.keepPrefix = typeof keepPrefix === "boolean" ? keepPrefix : true;
   form.value.prefixSeparator = prefixSeparator || form.value.prefixSeparator;
@@ -213,14 +218,17 @@ onUnmounted(async () => {
     await store.set("useCuid", form.value.useCuid);
     await store.set("includeWebp", form.value.includeWebp);
     await store.set("includeMp4", form.value.includeMp4);
+    await store.set("includeTranscription", form.value.includeTranscription);
     await store.save();
   }
 });
 </script>
 
 <template>
-  <section class="flex h-full">
-    <main class="w-[calc(100%-300px)] h-screen flex flex-col justify-between">
+  <section class="flex h-full" style="--aside-width: 350px">
+    <main
+      class="w-[calc(100%-var(--aside-width))] h-screen flex flex-col justify-between"
+    >
       <QueueTable class="flex-1" v-model="form" />
       <Console v-if="showConsole" class="h-[400px]" v-model="logs" />
     </main>

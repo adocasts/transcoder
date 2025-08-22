@@ -7,7 +7,7 @@ import TableBody from "./ui/table/TableBody.vue";
 import TableCell from "./ui/table/TableCell.vue";
 import { Form } from "~/types/form";
 import { LogProgressStatus } from "~/lib/parsed_log";
-import { CornerDownRight, Loader2, X } from "lucide-vue-next";
+import { CornerDownRight, X } from "lucide-vue-next";
 import Button from "./ui/button/Button.vue";
 import QueueProgressMain from "./QueueProgressMain.vue";
 import QueueProgressStep from "./QueueProgressStep.vue";

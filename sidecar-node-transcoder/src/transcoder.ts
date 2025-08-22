@@ -1,6 +1,6 @@
 import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
 import logger from "./logger.js";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { Resolutions, resolutions, allowedExtensions } from '../../src/lib/transcoder.js'
 import { createId as cuid } from '@paralleldrive/cuid2'
 import { exec, spawn } from "node:child_process"
@@ -14,6 +14,7 @@ export type TranscoderOptions = {
   output: string
   includeMp4: boolean
   includeWebp: boolean
+  includeTranscription: boolean
   prefixSeparator: string
   useCuid: boolean
 }
@@ -36,18 +37,37 @@ export default class Transcoder {
   #output: string
   #includeMp4: boolean
   #includeWebp: boolean
+  #includeTranscription: boolean
   #prefixSeparator: string
   #useCuid: boolean
+  #replacements = new Map([
+    ['Adonis Jazz', 'AdonisJS'],
+    ['Find.js', 'VineJS'],
+    ['Donis', 'Adonis'],
+    ['Adacast', 'Adocasts'],
+    ['Adonis JS', 'AdonisJS'],
+    ['Tailwind CSS', 'TailwindCSS'],
+    ['Alpine.js', 'AlpineJS'],
+    ['Edge JS', 'EdgeJS'],
+    ['X data', 'x-data'],
+    ['X show', 'x-show'],
+    ['X if', 'x-if'],
+    ['Edge.js', 'EdgeJS'],
+    ['Adonis.js', 'AdonisJS'],
+  ])
 
-  constructor({ queue, resolutions, output, includeMp4, includeWebp, prefixSeparator, useCuid }: TranscoderOptions) {
+  constructor({ queue, resolutions, output, includeMp4, includeWebp, includeTranscription, prefixSeparator, useCuid }: TranscoderOptions) {
     this.#queue = queue
     this.#resolutions = resolutions
     this.#output = output
     this.#includeMp4 = includeMp4
     this.#includeWebp = includeWebp
+    this.#includeTranscription = includeTranscription
     this.#prefixSeparator = prefixSeparator
     this.#useCuid = useCuid
   }
+
+  // #region Static Methods
 
   static parseResolutions(arg: string) {
     const parsed: Resolutions[] = []
@@ -80,6 +100,10 @@ export default class Transcoder {
     return queue
   }
 
+  // #endregion
+
+  // #region Process Management
+
   kill() {
     if (!this.#command) {
       logger.debug('[skipped]: no ffmpeg process to kill')
@@ -105,11 +129,14 @@ export default class Transcoder {
 
       await this.#compressOriginal(item, outputFolder)
       await this.#generateAnimatedWebp(item, outputFolder)
-      // await this.#transcribe(item, outputFolder)
+      await this.#transcribe(item, outputFolder)
+      await this.#translateTranscription(item, outputFolder)
     }
 
     logger.success(`[finished]: ${done.length} file(s) successfully processed`)
   }
+
+  // #region Process Steps
 
   async #transcodeResolutions([path, item]: [string, TranscoderQueueFile], outputFolder: string) {
     if (!this.#resolutions.length) return true
@@ -283,11 +310,12 @@ export default class Transcoder {
   }
 
   async #transcribe([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string): Promise<string | null> {
+    if (!this.#includeTranscription) return null
+
     logger.step({ index: 4, process: `Transcribing`, file: path })
 
     // use compress mp4 if enabled, otherwise use original video
     const source = this.#includeMp4 ? `${outputFolder}/video.mp4` : path
-    const srtFilename = this.#includeMp4 ? 'video' : filename
 
     logger.progress({ file: path, percent: 0 })
 
@@ -300,11 +328,6 @@ export default class Transcoder {
         '--language', 'en',
         '--verbose', 'False'
       ]
-
-      const renameAndCleanUpCommand = `
-        mv "${outputFolder}/${srtFilename}.srt" "${outputFolder}/en.srt" &&
-        rm "${outputFolder}"/*.{vtt,tsv,json}
-      `
 
       logger.info(`[started]: transcribing ${filename}`)
       logger.info(`[note]: This may take a while depending on your hardware and file size.`)
@@ -327,7 +350,7 @@ export default class Transcoder {
       });
 
       // `spawn` emits a 'close' event when the process finishes
-      whisperProcess.on('close', (code) => {
+      whisperProcess.on('close', async (code) => {
         if (code !== 0) {
           logger.error(`[error]: Whisper process exited with code ${code}. Transcription failed.`);
           resolve(null)
@@ -336,21 +359,9 @@ export default class Transcoder {
 
         logger.success(`[completed]: transcribing ${filename}; post-processing...`)
 
-        // execute the post-processing command after the main process finishes
-        exec(renameAndCleanUpCommand, (error) => {
-          logger.progress({ file: path, percent: 100 })
+        const srtFinal = await this.#transcribeCleanUp(path, outputFolder, filename)
 
-          if (error) {
-            logger.error(`[post-processing error]: ${error.message}`)
-            resolve(null)
-            return
-          }
-
-          logger.info(`[completed]: post-processing and clean up`)
-
-          resolve(`${outputFolder}/en.srt`)
-        })
-
+        resolve(srtFinal)
       })
 
       // handle errors if the command itself cannot be executed
@@ -360,6 +371,87 @@ export default class Transcoder {
       });
     })
   }
+
+  async #transcribeCleanUp(path: string, outputFolder: string, filename: string): Promise<string | null> {
+    const srtFilename = this.#includeMp4 ? 'video' : filename
+
+    const renameAndCleanUpCommand = `
+      mv "${outputFolder}/${srtFilename}.srt" "${outputFolder}/en.srt" &&
+      rm "${outputFolder}"/*.{vtt,tsv,json}
+    `
+
+    return new Promise((resolve) => {
+      // execute the post-processing command after the main process finishes
+      exec(renameAndCleanUpCommand, async (error) => {
+        if (error) {
+          logger.error(`[post-processing error]: ${error.message}`)
+          logger.progress({ file: path, percent: 100 })
+          resolve(null)
+          return
+        }
+
+        await this.#transcribeApplyReplacements(outputFolder, 'en.srt')
+        await this.#transcribeApplyReplacements(outputFolder, `${srtFilename}.txt`)
+
+        logger.info(`[completed]: post-processing and clean up`)
+        logger.progress({ file: path, percent: 100 })
+
+        resolve(`${outputFolder}/en.srt`)
+      })
+    })
+  }
+
+  async #transcribeApplyReplacements(outputFolder: string, filename: string) {
+    try {
+      let fileContent = await readFile(`${outputFolder}/${filename}`, 'utf8')
+
+      for (const [key, value] of this.#replacements) {
+        const regex = new RegExp(key, 'g')
+        fileContent = fileContent.replace(regex, value)
+      }
+
+      await writeFile(`${outputFolder}/${filename}`, fileContent, 'utf8')
+    } catch (error) {
+      logger.error(`[error]: Failed to apply replacements. Error: ${error.message}`)
+    }
+  }
+
+  async #translateTranscription([path, { filename }]: [string, TranscoderQueueFile], outputFolder: string) {
+    if (!this.#includeTranscription) return
+
+    const languageCodes = ['es', 'fr', 'de', 'pl', 'pt-BR']
+
+    logger.step({ index: 5, process: `Translating transcription`, file: path })
+    logger.progress({ file: path, percent: 0 })
+
+    const promises = languageCodes.map((code) => {
+      logger.info(`[started]: translation to ${code} for ${filename}`)
+
+      return new Promise((resolve) => {
+        exec(`trans :${code} -b -i "${outputFolder}/en.srt" -o "${outputFolder}/${code}.srt"`, (error) => {
+          if (error) {
+            logger.error(`[translation error]: ${code}: ${error.message}`)
+            resolve(null)
+            return
+          }
+
+          logger.info(`[completed]: translation to ${code} for ${filename}`)
+
+          resolve(`${outputFolder}/${code}.srt`)
+        })
+      })
+    })
+
+    await Promise.all(promises)
+    
+    logger.progress({ file: path, percent: 100 })
+  }
+
+  // #endregion
+
+  // #endregion
+
+  // #region Helpers
 
   #onFfmpegError(file: string, err: Error, resolve: (value: null) => void) {
     logger.progress({ file, percent: -1 })
@@ -442,4 +534,6 @@ export default class Transcoder {
 
     return `${this.#output}/${filenamePrefix}${this.#prefixSeparator}${cuid()}`
   }
+
+  // #endregion
 }

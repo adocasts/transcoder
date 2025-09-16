@@ -1,24 +1,25 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
+# Dependencies and AdonisJS build
 node_modules
-dist
-dist-ssr
-*.local
+build
+tmp
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+# Secrets
+.env
+.env.local
+.env.production.local
+.env.development.local
+
+# Frontend assets compiled code
+public/assets
+
+# Build tools specific
+npm-debug.log
+yarn-error.log
+
+# Editors specific
+.fleet
 .idea
+.vscode
+
+# Platform specific
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?

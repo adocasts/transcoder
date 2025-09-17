@@ -25,6 +25,8 @@ export default class Transcoder extends FfmpegBase {
   }
 
   async run() {
+    logger.info('Transcoding ...')
+
     for (const resolution of this.resolutions) {
       const playlist = await this.#transcode(resolution)
 
@@ -56,7 +58,7 @@ export default class Transcoder extends FfmpegBase {
 
     return new Promise((resolve) => {
       const progress = new Progress(resolutionName)
-      const command = this.ffmpeg(this.source, resolve)
+      const command = this.ffmpeg(this.source)
         .output(outputPlaylist)
         .videoCodec('libx264')
         .audioCodec('aac')

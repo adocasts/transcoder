@@ -54,5 +54,7 @@ export default class TranscoderRun extends BaseCommand {
       includeMp4: this.includeMp4,
       includeWebp: this.includeWebp,
     })
+
+    await runner.run()
   }
 }

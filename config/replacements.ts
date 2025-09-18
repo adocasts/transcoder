@@ -1,0 +1,15 @@
+export const replacements = new Map([
+  ['Adonis Jazz', 'AdonisJS'],
+  ['Find.js', 'VineJS'],
+  ['Donis', 'Adonis'],
+  ['Adacast', 'Adocasts'],
+  ['Adonis JS', 'AdonisJS'],
+  ['Tailwind CSS', 'TailwindCSS'],
+  ['Alpine.js', 'AlpineJS'],
+  ['Edge JS', 'EdgeJS'],
+  ['X data', 'x-data'],
+  ['X show', 'x-show'],
+  ['X if', 'x-if'],
+  ['Edge.js', 'EdgeJS'],
+  ['Adonis.js', 'AdonisJS'],
+])

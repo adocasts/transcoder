@@ -20,7 +20,7 @@ export default class Compressor extends FfmpegBase {
     return this.#compress()
   }
 
-  async #compress() {
+  async #compress(): Promise<string> {
     const output = [this.item.destination, 'video.mp4'].join('/')
     const resolution = this.#getMaxResolution()
     const { height } = resolutions.get(resolution) ?? {}

@@ -19,7 +19,7 @@ export default class GenerateWebp extends FfmpegBase {
     return this.#generate()
   }
 
-  async #generate() {
+  async #generate(): Promise<string> {
     const output = [this.item.destination, 'video.webp'].join('/')
     const duration = await this.detectVideoDuration(this.source)
 

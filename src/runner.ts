@@ -32,6 +32,8 @@ export default class Runner {
 
   async run() {
     for (const [source, item] of this.#queue) {
+      logger.info(`Creating destination directory: ${item.destination}`)
+
       // create destination folder path
       await mkdir(item.destination, { recursive: true })
 

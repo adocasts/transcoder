@@ -19,6 +19,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   LOG_LEVEL: Env.schema.string(),
 
   // transcoder options
+  SOURCE_LOCATION: Env.schema.string(),
   OUTPUT_LOCATION: Env.schema.string(),
   USE_UNIQUE_NAME: Env.schema.boolean(),
   INCLUDE_MP4: Env.schema.boolean(),

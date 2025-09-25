@@ -38,7 +38,7 @@ export default class Compressor extends FfmpegBase {
           '-preset',
           'fast',
           '-crf',
-          '28',
+          '26',
           '-tag:v',
           'hvc1',
           '-x265-params',

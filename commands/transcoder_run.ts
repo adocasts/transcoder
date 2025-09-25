@@ -1,12 +1,15 @@
 import env from '#start/env'
 import { args, BaseCommand, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
+import { readdir } from 'node:fs/promises'
 import Runner from '../src/runner.js'
 
 export default class TranscoderRun extends BaseCommand {
   static commandName = 'transcoder:run'
   static description = 'Run the transcoder & transcription on the listed files'
-  static options: CommandOptions = {}
+  static options: CommandOptions = {
+    startApp: true,
+  }
 
   @flags.string({
     description: 'Location to place final processed files',
@@ -43,10 +46,16 @@ export default class TranscoderRun extends BaseCommand {
   })
   declare includeWebp: boolean
 
-  @args.spread()
-  declare sources: string[]
+  @args.spread({
+    required: false,
+  })
+  declare sources: string[] | undefined
 
   async run() {
+    if (!this.sources?.length) {
+      this.sources = await this.#readDefaultSourceFolder()
+    }
+
     const runner = new Runner(this.sources, {
       output: this.output,
       useUniqueName: this.useUniqueName,
@@ -56,5 +65,19 @@ export default class TranscoderRun extends BaseCommand {
     })
 
     await runner.run()
+  }
+
+  async #readDefaultSourceFolder() {
+    const sourceLocation = env.get('SOURCE_LOCATION')
+    const entries = await readdir(sourceLocation, { withFileTypes: true })
+    const filenames = entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => {
+        return [sourceLocation, entry.name].join('/')
+      })
+
+    this.logger.info(`Using default sources, found ${filenames.length} file(s).`)
+
+    return filenames
   }
 }

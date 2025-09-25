@@ -18,7 +18,7 @@ export default class GenerateAudio extends FfmpegBase {
   }
 
   get output() {
-    return [this.item.destination, 'audio.mp4'].join('/')
+    return [this.item.destination, 'audio.mp3'].join('/')
   }
 
   async run() {

@@ -1,7 +1,7 @@
-import logger from '@adonisjs/core/services/logger'
-''import { exec } from 'node:child_process'
-import QueuedFile from "./lib/queued_file.js"
 import env from '#start/env'
+import logger from '@adonisjs/core/services/logger'
+import { exec } from 'node:child_process'
+import QueuedFile from './lib/queued_file.js'
 
 export default class Translator {
   #codes = env.get('TRANSCRIPTION_LANGS')?.split(',') ?? []

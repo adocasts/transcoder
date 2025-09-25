@@ -1,9 +1,9 @@
-''''''''''import { replacements } from '#config/replacements'
-import logger from "@adonisjs/core/services/logger"
-import { exec, spawn } from "node:child_process"
-import { readFile, writeFile } from "node:fs/promises"
-import Progress from "./lib/progress.js"
-import QueuedFile from "./lib/queued_file.js"
+import { replacements } from '#config/replacements'
+import logger from '@adonisjs/core/services/logger'
+import { exec, spawn } from 'node:child_process'
+import { readFile, writeFile } from 'node:fs/promises'
+import Progress from './lib/progress.js'
+import QueuedFile from './lib/queued_file.js'
 
 export default class Transcriber {
   declare source: string

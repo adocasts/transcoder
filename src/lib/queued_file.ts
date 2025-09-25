@@ -28,7 +28,7 @@ export default class QueuedFile {
     const filenameLessExt = this.filename.split('.').shift()!
     const filenamePrefix = filenameLessExt.split(this.#prefixSeparator).shift()!
 
-    this.destinationPath = options.useUniqueName
+    this.destinationFolder = options.useUniqueName
       ? `${filenamePrefix}${this.#prefixSeparator}${cuid()}`
       : filenameLessExt
   }

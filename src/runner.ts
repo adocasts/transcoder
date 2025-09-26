@@ -11,15 +11,14 @@ import Transcriber from './transcriber.js'
 import Translator from './translator.js'
 import { QueueMap, RunnerOptions } from './types/transcoder.js'
 
+type ResultKeys = 'compressed' | 'webp' | 'audio' | 'transcription'
+
 export default class Runner {
   #resolutions = env.get('RESOLUTIONS').split(',')
   #queue: QueueMap = new Map()
   #options: RunnerOptions
 
-  declare compressed: string | null | undefined
-  declare webp: string | null | undefined
-  declare audio: string | null | undefined
-  declare transcription: string | null | undefined
+  results: Map<ResultKeys, string | null | undefined> = new Map()
 
   constructor(sources: string[], options: RunnerOptions) {
     this.#queue = QueuedFile.create(sources, options)
@@ -38,14 +37,14 @@ export default class Runner {
       await mkdir(item.destination, { recursive: true })
 
       await this.#transcode(source, item)
-      this.compressed = await this.#compress(source, item)
-      this.webp = await this.#webp(source, item)
-
+      await this.#compress(source, item)
+      await this.#webp(source, item)
       await this.#transcribe(source, item)
     }
   }
 
   async #transcode(source: string, item: QueuedFile) {
+    if (!this.#options.transcode) return
     if (!this.#resolutions.length) return
 
     const transcoder = new Transcoder(source, item)
@@ -56,44 +55,56 @@ export default class Runner {
     if (!this.#options.includeMp4) return
 
     const compressor = new Compressor(source, item)
-    return compressor.run()
+    const compressed = await compressor.run()
+
+    this.results.set('compressed', compressed)
+
+    return compressed
   }
 
   async #webp(source: string, item: QueuedFile) {
     if (!this.#options.includeWebp) return
 
     const generator = new GenerateWebp(source, item)
-    return generator.run()
+    const webp = await generator.run()
+
+    this.results.set('webp', webp)
+
+    return webp
   }
 
   async #transcribe(source: string, item: QueuedFile) {
     if (!this.#options.transcribe) return
 
     const audioGenerator = this.#getAudioGenerator(source, item)
-    this.audio = await audioGenerator.run()
+    const audio = await audioGenerator.run()
 
-    if (!this.audio) {
+    this.results.set('audio', audio)
+
+    if (!audio) {
       logger.error('Skipping transcription, no audio file was generated')
       return
     }
 
-    const transcriber = new Transcriber(this.audio, item)
-    this.transcription = await transcriber.run()
+    const transcriber = new Transcriber(audio, item)
+    const transcription = await transcriber.run()
 
-    if (!this.transcription) {
+    this.results.set('transcription', transcription)
+
+    if (!transcription) {
       logger.error('Skipping translations, no transcription file was generated')
       await audioGenerator.destroy()
       return
     }
 
-    const translator = new Translator(this.transcription, item)
+    const translator = new Translator(transcription, item)
     await translator.run()
 
     await audioGenerator.destroy()
   }
 
   #getAudioGenerator(source: string, item: QueuedFile) {
-    const path = this.compressed ?? source
+    const path = this.results.get('compressed') ?? source
     return new GenerateAudio(path, item)
   }
 }

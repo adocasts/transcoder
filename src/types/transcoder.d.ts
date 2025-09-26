@@ -3,6 +3,7 @@ import QueuedFile from '../queued_file.ts'
 export interface RunnerOptions {
   output: string
   useUniqueName: boolean
+  transcode: boolean
   transcribe: boolean
   includeMp4: boolean
   includeWebp: boolean

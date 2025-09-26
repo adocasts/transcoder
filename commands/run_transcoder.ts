@@ -1,11 +1,11 @@
 import env from '#start/env'
 import { args, BaseCommand, flags } from '@adonisjs/core/ace'
 import type { CommandOptions } from '@adonisjs/core/types/ace'
-import { readdir } from 'node:fs/promises'
 import Runner from '../src/runner.js'
+import Source from '../src/source.js'
 
-export default class TranscoderRun extends BaseCommand {
-  static commandName = 'transcoder:run'
+export default class RunTranscoder extends BaseCommand {
+  static commandName = 'run:transcoder'
   static description = 'Run the transcoder & transcription on the listed files'
   static options: CommandOptions = {
     startApp: true,
@@ -52,32 +52,16 @@ export default class TranscoderRun extends BaseCommand {
   declare sources: string[] | undefined
 
   async run() {
-    if (!this.sources?.length) {
-      this.sources = await this.#readDefaultSourceFolder()
-    }
-
-    const runner = new Runner(this.sources, {
+    const sources = await Source.getList(this.sources)
+    const runner = new Runner(sources, {
       output: this.output,
       useUniqueName: this.useUniqueName,
+      transcode: true,
       transcribe: this.transcribe,
       includeMp4: this.includeMp4,
       includeWebp: this.includeWebp,
     })
 
     await runner.run()
-  }
-
-  async #readDefaultSourceFolder() {
-    const sourceLocation = env.get('SOURCE_LOCATION')
-    const entries = await readdir(sourceLocation, { withFileTypes: true })
-    const filenames = entries
-      .filter((entry) => entry.isFile())
-      .map((entry) => {
-        return [sourceLocation, entry.name].join('/')
-      })
-
-    this.logger.info(`Using default sources, found ${filenames.length} file(s).`)
-
-    return filenames
   }
 }

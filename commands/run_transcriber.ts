@@ -32,6 +32,7 @@ export default class RunTranscriber extends BaseCommand {
 
   async run() {
     const sources = await Source.getList(this.sources)
+    this.logger.log(`found ${sources.length} sources`)
     const runner = new Runner(sources, {
       output: this.output,
       useUniqueName: this.useUniqueName,

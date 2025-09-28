@@ -1,6 +1,7 @@
 import { replacements } from '#config/replacements'
+import env from '#start/env'
 import logger from '@adonisjs/core/services/logger'
-import { exec, spawn } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import Progress from './lib/progress.js'
 import QueuedFile from './lib/queued_file.js'
@@ -23,26 +24,20 @@ export default class Transcriber {
 
   async #transcribe(): Promise<string | null> {
     return new Promise((resolve) => {
+      // 👇 location of faster-whisper python isolation `pipx install faster-whisper`
+      const command = env.get('PYTHON_FASTER_WHISPER')
       const whisperArgs = [
+        './faster_whisper_cli.py',
         `"${this.source}"`,
-        '--output_dir',
         `"${this.item.destination}"`,
-        '--output_format',
-        'all',
-        '--model',
         'large-v2',
-        '--language',
-        'en',
-        '--verbose',
-        'False',
       ]
 
       const progress = new Progress('Transcribing')
 
       progress.start()
 
-      // execute the command using `spawn`
-      const whisperProcess = spawn('whisper', whisperArgs, { shell: true })
+      const whisperProcess = spawn(command, whisperArgs, { shell: true })
 
       // capture stdout data in real-time
       whisperProcess.stdout.on('data', (data) => {
@@ -60,13 +55,13 @@ export default class Transcriber {
 
       // `spawn` emits a 'close' event when the process finishes
       whisperProcess.on('close', async (code) => {
+        progress.update(100)
+
         if (code !== 0) {
           logger.error(`[error]: Whisper process exited with code ${code}. Transcription failed.`)
           resolve(null)
           return
         }
-
-        logger.info(`[completed]: transcribing ${this.source}; post-processing...`)
 
         const srtFinal = await this.#transcribeCleanUp()
 
@@ -84,31 +79,12 @@ export default class Transcriber {
   }
 
   async #transcribeCleanUp(): Promise<string | null> {
-    const source = this.source.split('.')[0]
-    const sourceName = source.split('/').pop()
+    await this.#transcribeApplyReplacements('en.srt')
+    await this.#transcribeApplyReplacements(`en.txt`)
 
-    const renameAndCleanUpCommand = `
-      mv "${source}.srt" "${this.item.destination}/en.srt" &&
-      rm "${this.item.destination}"/*.{vtt,tsv,json}
-    `
+    logger.info(`[completed]: post-processing and clean up`)
 
-    return new Promise((resolve) => {
-      // execute the post-processing command after the main process finishes
-      exec(renameAndCleanUpCommand, async (error) => {
-        if (error) {
-          logger.error(`[post-processing error]: ${error.message}`)
-          resolve(null)
-          return
-        }
-
-        await this.#transcribeApplyReplacements('en.srt')
-        await this.#transcribeApplyReplacements(`${sourceName}.txt`)
-
-        logger.info(`[completed]: post-processing and clean up`)
-
-        resolve(`${this.item.destination}/en.srt`)
-      })
-    })
+    return `${this.item.destination}/en.srt`
   }
 
   async #transcribeApplyReplacements(filename: string) {

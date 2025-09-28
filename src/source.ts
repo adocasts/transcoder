@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises'
 import path from 'node:path'
 
 export default class Source {
-  static #extensions = new Set(['mp4', 'mkv', 'mov', 'webm', 'avi'])
+  static #extensions = new Set(['.mp4', '.mkv', '.mov', '.webm', '.avi'])
 
   static async getList(sources: string[] | undefined) {
     const filepaths = sources || (await this.#readDefaultSourceFolder())
@@ -26,6 +26,8 @@ export default class Source {
     return sources.filter((filepath) => {
       const ext = path.extname(filepath)
       const lowerExt = ext.toLowerCase()
+
+      console.log({ lowerExt })
 
       return this.#extensions.has(lowerExt)
     })

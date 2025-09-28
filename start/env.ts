@@ -21,6 +21,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   // transcoder options
   SOURCE_LOCATION: Env.schema.string(),
   OUTPUT_LOCATION: Env.schema.string(),
+  PYTHON_FASTER_WHISPER: Env.schema.string(),
   USE_UNIQUE_NAME: Env.schema.boolean(),
   INCLUDE_MP4: Env.schema.boolean(),
   INCLUDE_WEBP: Env.schema.boolean(),

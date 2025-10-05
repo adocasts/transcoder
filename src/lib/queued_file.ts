@@ -4,7 +4,7 @@ import { RunnerOptions } from '../types/transcoder.js'
 
 export default class QueuedFile {
   #allowedExtensions = new Set(['mp4', 'mkv', 'webm', 'mov'])
-  #prefixSeparator = '_'
+  #prefixSeparator = '-'
 
   declare filename: string
   declare extname: string

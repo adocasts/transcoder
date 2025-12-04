@@ -13,4 +13,5 @@ export const replacements = new Map([
   ['Edge.js', 'EdgeJS'],
   ['Adonis.js', 'AdonisJS'],
   ['YAPA', 'Japa'],
+  ['Yampa', 'Japa'],
 ])

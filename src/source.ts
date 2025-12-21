@@ -27,8 +27,6 @@ export default class Source {
       const ext = path.extname(filepath)
       const lowerExt = ext.toLowerCase()
 
-      console.log({ lowerExt })
-
       return this.#extensions.has(lowerExt)
     })
   }

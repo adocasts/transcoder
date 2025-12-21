@@ -52,9 +52,9 @@ For example, if the video is called `adonisjs-quick-tip.mp4` and the resolutions
 
 The following dependencies need to be installed and accessible via their CLI commands on your system for this application to work. These are not bundled as part of this application.
 
-- [ ] [Ffmpeg](https://ffmpeg.org/) - Used to transcode and compress videos
-- [ ] [Faster Whisper (Python)](https://github.com/SYSTRAN/faster-whisper) - Used to generate a transcription of videos
-- [ ] [Argos Translate (Python)](https://github.com/argosopentech/argos-translate) - Used to translate the video transcriptions
+- [Ffmpeg](https://ffmpeg.org/) - Used to transcode and compress videos
+- [Faster Whisper (Python)](https://github.com/SYSTRAN/faster-whisper) - Used to generate a transcription of videos
+- [Argos Translate (Python)](https://github.com/argosopentech/argos-translate) - Used to translate the video transcriptions
 
 ### Todos
 

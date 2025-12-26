@@ -10,6 +10,7 @@ import Transcoder from './transcoder.js'
 import Transcriber from './transcriber.js'
 import Translator from './translator.js'
 import { QueueMap, RunnerOptions } from './types/transcoder.js'
+import Thumbnails from './thumbnails.js'
 
 type ResultKeys = 'compressed' | 'webp' | 'audio' | 'transcription'
 
@@ -37,6 +38,7 @@ export default class Runner {
       await mkdir(item.destination, { recursive: true })
 
       await this.#transcode(source, item)
+      await this.#thumbnails(source, item)
       await this.#compress(source, item)
       await this.#webp(source, item)
       await this.#transcribe(source, item)
@@ -49,6 +51,11 @@ export default class Runner {
 
     const transcoder = new Transcoder(source, item)
     await transcoder.run()
+  }
+
+  async #thumbnails(source: string, item: QueuedFile) {
+    const thumbnails = new Thumbnails(source, item)
+    await thumbnails.run()
   }
 
   async #compress(source: string, item: QueuedFile) {
